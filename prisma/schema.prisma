@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------
+// ENUMS
+// ----------------------------
+enum Role {
+  OWNER
+  MANAGER
+  EMPLOYEE
+}
+
+// ----------------------------
+// MODELS
+// ----------------------------
+
+model Business {
+  id           String         @id @default(cuid())
+  name         String
+  logoUrl      String?
+  theme        String?
+
+  users        User[]
+  plantIntakes PlantIntake[]
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model User {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  name        String?
+  role        Role       @default(EMPLOYEE)
+
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id])
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model PlantIntake {
+  id            String     @id @default(cuid())
+
+  businessId    String
+  business      Business   @relation(fields: [businessId], references: [id])
+
+  sku           String?
+  genus         String?
+  cultivar      String?
+  size          String?
+  quantity      Int?
+  vendor        String?
+
+  dateReceived  DateTime?  @db.Timestamp(6)
+
+  notes         String?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([businessId])
+  @@index([sku])
+  @@index([dateReceived])
+}
