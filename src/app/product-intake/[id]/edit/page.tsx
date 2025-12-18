@@ -1,20 +1,21 @@
-//plant intake edit page
-
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 
 // --- SERVER ACTION FOR UPDATING ---
-async function updatePlantIntake(id: string, formData: FormData) {
+async function updateProductIntake(id: string, formData: FormData) {
   "use server";
 
-  await prisma.plantIntake.update({
+  await prisma.productIntake.update({
     where: { id },
     data: {
+      productName: formData.get("productName")?.toString() || null,
+      category: formData.get("category")?.toString() || null,
+      brand: formData.get("brand")?.toString() || null,
       sku: formData.get("sku")?.toString() || null,
-      genus: formData.get("genus")?.toString() || null,
-      cultivar: formData.get("cultivar")?.toString() || null,
-      size: formData.get("size")?.toString() || null,
       quantity: Number(formData.get("quantity")) || null,
+      unit: formData.get("unit")?.toString() || null,
+      unitCost: formData.get("unitCost") ? Number(formData.get("unitCost")) : null,
+      totalCost: formData.get("totalCost") ? Number(formData.get("totalCost")) : null,
       vendor: formData.get("vendor")?.toString() || null,
       notes: formData.get("notes")?.toString() || null,
       dateReceived: formData.get("dateReceived")
@@ -23,26 +24,26 @@ async function updatePlantIntake(id: string, formData: FormData) {
     },
   });
 
-  redirect("/plant-intake");
+  redirect("/product-intake");
 }
 
 // --- SERVER ACTION FOR DELETING ---
-async function deletePlantIntake(id: string) {
+async function deleteProductIntake(id: string) {
   "use server";
 
-  await prisma.plantIntake.delete({
+  await prisma.productIntake.delete({
     where: { id },
   });
 
-  redirect("/plant-intake");
+  redirect("/product-intake");
 }
 
-export default async function EditPlantIntakePage({
+export default async function EditProductIntakePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const record = await prisma.plantIntake.findUnique({
+  const record = await prisma.productIntake.findUnique({
     where: { id: params.id },
   });
 
@@ -50,10 +51,10 @@ export default async function EditPlantIntakePage({
 
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-6">Edit Plant Intake</h1>
+      <h1 className="text-2xl font-semibold mb-6">Edit Product Intake</h1>
 
       <form
-        action={updatePlantIntake.bind(null, params.id)}
+        action={updateProductIntake.bind(null, params.id)}
         className="space-y-4"
       >
         {/* Date */}
@@ -71,6 +72,39 @@ export default async function EditPlantIntakePage({
           />
         </div>
 
+        {/* Product Name */}
+        <div>
+          <label className="block text-sm font-medium">Product Name</label>
+          <input
+            type="text"
+            name="productName"
+            className="border p-2 rounded w-full"
+            defaultValue={record.productName ?? ""}
+          />
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className="block text-sm font-medium">Category</label>
+          <input
+            type="text"
+            name="category"
+            className="border p-2 rounded w-full"
+            defaultValue={record.category ?? ""}
+          />
+        </div>
+
+        {/* Brand */}
+        <div>
+          <label className="block text-sm font-medium">Brand</label>
+          <input
+            type="text"
+            name="brand"
+            className="border p-2 rounded w-full"
+            defaultValue={record.brand ?? ""}
+          />
+        </div>
+
         {/* SKU */}
         <div>
           <label className="block text-sm font-medium">SKU</label>
@@ -82,39 +116,6 @@ export default async function EditPlantIntakePage({
           />
         </div>
 
-        {/* Genus */}
-        <div>
-          <label className="block text-sm font-medium">Genus</label>
-          <input
-            type="text"
-            name="genus"
-            className="border p-2 rounded w-full"
-            defaultValue={record.genus ?? ""}
-          />
-        </div>
-
-        {/* Cultivar */}
-        <div>
-          <label className="block text-sm font-medium">Cultivar</label>
-          <input
-            type="text"
-            name="cultivar"
-            className="border p-2 rounded w-full"
-            defaultValue={record.cultivar ?? ""}
-          />
-        </div>
-
-        {/* Size */}
-        <div>
-          <label className="block text-sm font-medium">Size</label>
-          <input
-            type="text"
-            name="size"
-            className="border p-2 rounded w-full"
-            defaultValue={record.size ?? ""}
-          />
-        </div>
-
         {/* Quantity */}
         <div>
           <label className="block text-sm font-medium">Quantity</label>
@@ -123,6 +124,41 @@ export default async function EditPlantIntakePage({
             name="quantity"
             className="border p-2 rounded w-full"
             defaultValue={record.quantity ?? ""}
+          />
+        </div>
+
+        {/* Unit */}
+        <div>
+          <label className="block text-sm font-medium">Unit</label>
+          <input
+            type="text"
+            name="unit"
+            className="border p-2 rounded w-full"
+            defaultValue={record.unit ?? ""}
+          />
+        </div>
+
+        {/* Unit Cost */}
+        <div>
+          <label className="block text-sm font-medium">Unit Cost ($)</label>
+          <input
+            type="number"
+            name="unitCost"
+            step="0.01"
+            className="border p-2 rounded w-full"
+            defaultValue={record.unitCost ?? ""}
+          />
+        </div>
+
+        {/* Total Cost */}
+        <div>
+          <label className="block text-sm font-medium">Total Cost ($)</label>
+          <input
+            type="number"
+            name="totalCost"
+            step="0.01"
+            className="border p-2 rounded w-full"
+            defaultValue={record.totalCost ?? ""}
           />
         </div>
 
@@ -158,7 +194,7 @@ export default async function EditPlantIntakePage({
           </button>
 
           <a
-            href="/plant-intake"
+            href="/product-intake"
             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
           >
             Cancel
@@ -166,7 +202,7 @@ export default async function EditPlantIntakePage({
 
           {/* DELETE BUTTON */}
           <form
-            action={deletePlantIntake.bind(null, record.id)}
+            action={deleteProductIntake.bind(null, record.id)}
             className="ml-auto"
           >
             <button

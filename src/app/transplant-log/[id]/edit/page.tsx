@@ -1,48 +1,48 @@
-//plant intake edit page
-
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 
 // --- SERVER ACTION FOR UPDATING ---
-async function updatePlantIntake(id: string, formData: FormData) {
+async function updateTransplantLog(id: string, formData: FormData) {
   "use server";
 
-  await prisma.plantIntake.update({
+  await prisma.transplantLog.update({
     where: { id },
     data: {
-      sku: formData.get("sku")?.toString() || null,
+      transplantDate: formData.get("transplantDate")
+        ? new Date(formData.get("transplantDate")!.toString())
+        : null,
+      plantName: formData.get("plantName")?.toString() || null,
       genus: formData.get("genus")?.toString() || null,
       cultivar: formData.get("cultivar")?.toString() || null,
-      size: formData.get("size")?.toString() || null,
+      fromSize: formData.get("fromSize")?.toString() || null,
+      toSize: formData.get("toSize")?.toString() || null,
       quantity: Number(formData.get("quantity")) || null,
-      vendor: formData.get("vendor")?.toString() || null,
+      location: formData.get("location")?.toString() || null,
+      employee: formData.get("employee")?.toString() || null,
       notes: formData.get("notes")?.toString() || null,
-      dateReceived: formData.get("dateReceived")
-        ? new Date(formData.get("dateReceived")!.toString())
-        : null,
     },
   });
 
-  redirect("/plant-intake");
+  redirect("/transplant-log");
 }
 
 // --- SERVER ACTION FOR DELETING ---
-async function deletePlantIntake(id: string) {
+async function deleteTransplantLog(id: string) {
   "use server";
 
-  await prisma.plantIntake.delete({
+  await prisma.transplantLog.delete({
     where: { id },
   });
 
-  redirect("/plant-intake");
+  redirect("/transplant-log");
 }
 
-export default async function EditPlantIntakePage({
+export default async function EditTransplantLogPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const record = await prisma.plantIntake.findUnique({
+  const record = await prisma.transplantLog.findUnique({
     where: { id: params.id },
   });
 
@@ -50,35 +50,35 @@ export default async function EditPlantIntakePage({
 
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-6">Edit Plant Intake</h1>
+      <h1 className="text-2xl font-semibold mb-6">Edit Transplant</h1>
 
       <form
-        action={updatePlantIntake.bind(null, params.id)}
+        action={updateTransplantLog.bind(null, params.id)}
         className="space-y-4"
       >
         {/* Date */}
         <div>
-          <label className="block text-sm font-medium">Date Received</label>
+          <label className="block text-sm font-medium">Transplant Date</label>
           <input
             type="date"
-            name="dateReceived"
+            name="transplantDate"
             className="border p-2 rounded w-full"
             defaultValue={
-              record.dateReceived
-                ? record.dateReceived.toISOString().slice(0, 10)
+              record.transplantDate
+                ? record.transplantDate.toISOString().slice(0, 10)
                 : ""
             }
           />
         </div>
 
-        {/* SKU */}
+        {/* Plant Name */}
         <div>
-          <label className="block text-sm font-medium">SKU</label>
+          <label className="block text-sm font-medium">Plant Name</label>
           <input
             type="text"
-            name="sku"
+            name="plantName"
             className="border p-2 rounded w-full"
-            defaultValue={record.sku ?? ""}
+            defaultValue={record.plantName ?? ""}
           />
         </div>
 
@@ -104,14 +104,25 @@ export default async function EditPlantIntakePage({
           />
         </div>
 
-        {/* Size */}
+        {/* From Size */}
         <div>
-          <label className="block text-sm font-medium">Size</label>
+          <label className="block text-sm font-medium">From Size</label>
           <input
             type="text"
-            name="size"
+            name="fromSize"
             className="border p-2 rounded w-full"
-            defaultValue={record.size ?? ""}
+            defaultValue={record.fromSize ?? ""}
+          />
+        </div>
+
+        {/* To Size */}
+        <div>
+          <label className="block text-sm font-medium">To Size</label>
+          <input
+            type="text"
+            name="toSize"
+            className="border p-2 rounded w-full"
+            defaultValue={record.toSize ?? ""}
           />
         </div>
 
@@ -126,14 +137,25 @@ export default async function EditPlantIntakePage({
           />
         </div>
 
-        {/* Vendor */}
+        {/* Location */}
         <div>
-          <label className="block text-sm font-medium">Vendor</label>
+          <label className="block text-sm font-medium">Location</label>
           <input
             type="text"
-            name="vendor"
+            name="location"
             className="border p-2 rounded w-full"
-            defaultValue={record.vendor ?? ""}
+            defaultValue={record.location ?? ""}
+          />
+        </div>
+
+        {/* Employee */}
+        <div>
+          <label className="block text-sm font-medium">Employee</label>
+          <input
+            type="text"
+            name="employee"
+            className="border p-2 rounded w-full"
+            defaultValue={record.employee ?? ""}
           />
         </div>
 
@@ -158,7 +180,7 @@ export default async function EditPlantIntakePage({
           </button>
 
           <a
-            href="/plant-intake"
+            href="/transplant-log"
             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
           >
             Cancel
@@ -166,7 +188,7 @@ export default async function EditPlantIntakePage({
 
           {/* DELETE BUTTON */}
           <form
-            action={deletePlantIntake.bind(null, record.id)}
+            action={deleteTransplantLog.bind(null, record.id)}
             className="ml-auto"
           >
             <button

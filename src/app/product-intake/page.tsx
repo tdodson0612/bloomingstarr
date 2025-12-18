@@ -1,6 +1,6 @@
-// app/plant-intake/page.tsx
+// app/product-intake/page.tsx
 import { prisma } from "@/lib/db";
-import type { PlantIntake, Prisma } from "@prisma/client";
+import type { ProductIntake, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
 
@@ -13,12 +13,11 @@ function toStringArray(value: string | string[] | undefined): string[] {
   return Array.isArray(value) ? value : value.split(",").map((v) => v.trim()).filter(Boolean);
 }
 
-export default async function PlantIntakePage({
+export default async function ProductIntakePage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // Await the searchParams promise
   const params = await searchParams;
 
   // --- Read filters from URL ---
@@ -26,9 +25,8 @@ export default async function PlantIntakePage({
   const vendorParam = params.vendor;
   const vendorsSelected = toStringArray(vendorParam);
 
-  const genus = (params.genus as string) || "";
-  const cultivar = (params.cultivar as string) || "";
-  const size = (params.size as string) || "";
+  const category = (params.category as string) || "";
+  const brand = (params.brand as string) || "";
 
   const qtyMin = (params.qtyMin as string) || "";
   const qtyMax = (params.qtyMax as string) || "";
@@ -46,8 +44,8 @@ export default async function PlantIntakePage({
 
   function startOfWeek(d: Date) {
     const date = new Date(d);
-    const day = date.getDay(); // 0 (Sun) -> 6 (Sat)
-    const diff = date.getDate() - day; // start week on Sunday
+    const day = date.getDay();
+    const diff = date.getDate() - day;
     return new Date(date.setDate(diff));
   }
 
@@ -112,16 +110,17 @@ export default async function PlantIntakePage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.PlantIntakeWhereInput = {};
+  const where: Prisma.ProductIntakeWhereInput = {};
 
   if (search) {
     where.OR = [
       { sku: { contains: search, mode: "insensitive" } },
-      { genus: { contains: search, mode: "insensitive" } },
-      { cultivar: { contains: search, mode: "insensitive" } },
+      { productName: { contains: search, mode: "insensitive" } },
+      { category: { contains: search, mode: "insensitive" } },
+      { brand: { contains: search, mode: "insensitive" } },
       { vendor: { contains: search, mode: "insensitive" } },
       { notes: { contains: search, mode: "insensitive" } },
-      { size: { contains: search, mode: "insensitive" } },
+      { unit: { contains: search, mode: "insensitive" } },
     ];
   }
 
@@ -129,16 +128,12 @@ export default async function PlantIntakePage({
     where.vendor = { in: vendorsSelected };
   }
 
-  if (genus) {
-    where.genus = { equals: genus };
+  if (category) {
+    where.category = { equals: category };
   }
 
-  if (cultivar) {
-    where.cultivar = { equals: cultivar };
-  }
-
-  if (size) {
-    where.size = { equals: size };
+  if (brand) {
+    where.brand = { equals: brand };
   }
 
   if (qtyMin || qtyMax) {
@@ -162,27 +157,23 @@ export default async function PlantIntakePage({
   }
 
   // --- Fetch records & distinct filter options ---
-  const [records, vendorOptionsRaw, genusOptionsRaw, cultivarOptionsRaw, sizeOptionsRaw] =
+  const [records, vendorOptionsRaw, categoryOptionsRaw, brandOptionsRaw] =
     await Promise.all([
-      prisma.plantIntake.findMany({
+      prisma.productIntake.findMany({
         where,
         orderBy: { dateReceived: "desc" },
       }),
-      prisma.plantIntake.findMany({
+      prisma.productIntake.findMany({
         select: { vendor: true },
         distinct: ["vendor"],
       }),
-      prisma.plantIntake.findMany({
-        select: { genus: true },
-        distinct: ["genus"],
+      prisma.productIntake.findMany({
+        select: { category: true },
+        distinct: ["category"],
       }),
-      prisma.plantIntake.findMany({
-        select: { cultivar: true },
-        distinct: ["cultivar"],
-      }),
-      prisma.plantIntake.findMany({
-        select: { size: true },
-        distinct: ["size"],
+      prisma.productIntake.findMany({
+        select: { brand: true },
+        distinct: ["brand"],
       }),
     ]);
 
@@ -191,37 +182,27 @@ export default async function PlantIntakePage({
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-
-  const genuses = genusOptionsRaw
-    .map((v: { genus: string | null }) => v.genus)
+  const categories = categoryOptionsRaw
+    .map((v: { category: string | null }) => v.category)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-
-  const cultivars = cultivarOptionsRaw
-    .map((v: { cultivar: string | null }) => v.cultivar)
+  const brands = brandOptionsRaw
+    .map((v: { brand: string | null }) => v.brand)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
-
-
-  const sizes = sizeOptionsRaw
-    .map((v: { size: string | null }) => v.size)
-    .filter((v): v is string => v !== null)
-    .sort((a: string, b: string) => a.localeCompare(b));
-
-
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Plant Intake</h1>
+        <h1 className="text-2xl font-semibold">Product Intake</h1>
 
         <Link
-          href="/plant-intake/new"
+          href="/product-intake/new"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          + Add Plant
+          + Add Product
         </Link>
       </div>
 
@@ -230,32 +211,33 @@ export default async function PlantIntakePage({
         <FilterBar
           search={search}
           vendorsSelected={vendorsSelected}
-          genus={genus}
-          cultivar={cultivar}
-          size={size}
+          category={category}
+          brand={brand}
           qtyMin={qtyMin}
           qtyMax={qtyMax}
           dateFrom={dateFromParam}
           dateTo={dateToParam}
           quickRange={quickRange}
           vendorOptions={vendors}
-          genusOptions={genuses}
-          cultivarOptions={cultivars}
-          sizeOptions={sizes}
+          categoryOptions={categories}
+          brandOptions={brands}
         />
       </div>
 
       {/* Table */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
-        <table className="w-full text-left text-sm min-w-[1100px]">
+        <table className="w-full text-left text-sm min-w-[1200px]">
           <thead>
             <tr className="border-b bg-gray-50">
               <th className="py-2 px-2">Date</th>
+              <th className="py-2 px-2">Product Name</th>
+              <th className="py-2 px-2">Category</th>
+              <th className="py-2 px-2">Brand</th>
               <th className="py-2 px-2">SKU</th>
-              <th className="py-2 px-2">Genus</th>
-              <th className="py-2 px-2">Cultivar</th>
-              <th className="py-2 px-2">Size</th>
               <th className="py-2 px-2">Qty</th>
+              <th className="py-2 px-2">Unit</th>
+              <th className="py-2 px-2">Unit Cost</th>
+              <th className="py-2 px-2">Total Cost</th>
               <th className="py-2 px-2">Vendor</th>
               <th className="py-2 px-2">Notes</th>
               <th className="py-2 px-2">Actions</th>
@@ -263,18 +245,25 @@ export default async function PlantIntakePage({
           </thead>
 
           <tbody>
-            {records.map((r: PlantIntake) => (
+            {records.map((r: ProductIntake) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
                 <td className="py-2 px-2">
                   {r.dateReceived
                     ? r.dateReceived.toISOString().slice(0, 10)
                     : "-"}
                 </td>
+                <td className="py-2 px-2">{r.productName || "-"}</td>
+                <td className="py-2 px-2">{r.category || "-"}</td>
+                <td className="py-2 px-2">{r.brand || "-"}</td>
                 <td className="py-2 px-2">{r.sku || "-"}</td>
-                <td className="py-2 px-2">{r.genus || "-"}</td>
-                <td className="py-2 px-2">{r.cultivar || "-"}</td>
-                <td className="py-2 px-2">{r.size || "-"}</td>
                 <td className="py-2 px-2">{r.quantity ?? "-"}</td>
+                <td className="py-2 px-2">{r.unit || "-"}</td>
+                <td className="py-2 px-2">
+                  {r.unitCost ? `$${r.unitCost.toFixed(2)}` : "-"}
+                </td>
+                <td className="py-2 px-2">
+                  {r.totalCost ? `$${r.totalCost.toFixed(2)}` : "-"}
+                </td>
                 <td className="py-2 px-2">{r.vendor || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
@@ -283,7 +272,7 @@ export default async function PlantIntakePage({
                   <div className="flex gap-3">
                     {/* EDIT */}
                     <Link
-                      href={`/plant-intake/${r.id}/edit`}
+                      href={`/product-intake/${r.id}/edit`}
                       className="text-blue-600 hover:underline"
                     >
                       Edit
@@ -293,7 +282,7 @@ export default async function PlantIntakePage({
                     <form
                       action={async () => {
                         "use server";
-                        await prisma.plantIntake.delete({
+                        await prisma.productIntake.delete({
                           where: { id: r.id },
                         });
                       }}
@@ -317,7 +306,7 @@ export default async function PlantIntakePage({
 
         {records.length === 0 && (
           <p className="text-gray-500 text-center py-4">
-            No intake records match your filters.
+            No product intake records match your filters.
           </p>
         )}
       </div>

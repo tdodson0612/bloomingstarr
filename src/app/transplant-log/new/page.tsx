@@ -1,54 +1,54 @@
-//plant intake new page
-
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 
 // --- SERVER ACTION ---
-async function createPlantIntake(formData: FormData) {
+async function createTransplantLog(formData: FormData) {
   "use server";
 
-  await prisma.plantIntake.create({
+  await prisma.transplantLog.create({
     data: {
       businessId: "demo-business", // TODO: replace with real business context
-      sku: formData.get("sku")?.toString() || null,
+      transplantDate: formData.get("transplantDate")
+        ? new Date(formData.get("transplantDate")!.toString())
+        : null,
+      plantName: formData.get("plantName")?.toString() || null,
       genus: formData.get("genus")?.toString() || null,
       cultivar: formData.get("cultivar")?.toString() || null,
-      size: formData.get("size")?.toString() || null,
+      fromSize: formData.get("fromSize")?.toString() || null,
+      toSize: formData.get("toSize")?.toString() || null,
       quantity: Number(formData.get("quantity")) || null,
-      vendor: formData.get("vendor")?.toString() || null,
+      location: formData.get("location")?.toString() || null,
+      employee: formData.get("employee")?.toString() || null,
       notes: formData.get("notes")?.toString() || null,
-      dateReceived: formData.get("dateReceived")
-        ? new Date(formData.get("dateReceived")!.toString())
-        : null,
     },
   });
 
-  redirect("/plant-intake");
+  redirect("/transplant-log");
 }
 
-export default function NewPlantIntakePage() {
+export default function NewTransplantLogPage() {
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-6">Add Plant Intake</h1>
+      <h1 className="text-2xl font-semibold mb-6">Add Transplant</h1>
 
-      <form action={createPlantIntake} className="space-y-4">
+      <form action={createTransplantLog} className="space-y-4">
         {/* Date */}
         <div>
-          <label className="block text-sm font-medium">Date Received</label>
+          <label className="block text-sm font-medium">Transplant Date</label>
           <input
             type="date"
-            name="dateReceived"
+            name="transplantDate"
             className="border p-2 rounded w-full"
             required
           />
         </div>
 
-        {/* SKU */}
+        {/* Plant Name */}
         <div>
-          <label className="block text-sm font-medium">SKU</label>
+          <label className="block text-sm font-medium">Plant Name</label>
           <input
             type="text"
-            name="sku"
+            name="plantName"
             className="border p-2 rounded w-full"
           />
         </div>
@@ -73,12 +73,24 @@ export default function NewPlantIntakePage() {
           />
         </div>
 
-        {/* Size */}
+        {/* From Size */}
         <div>
-          <label className="block text-sm font-medium">Size</label>
+          <label className="block text-sm font-medium">From Size</label>
           <input
             type="text"
-            name="size"
+            name="fromSize"
+            placeholder="e.g., 4 inch"
+            className="border p-2 rounded w-full"
+          />
+        </div>
+
+        {/* To Size */}
+        <div>
+          <label className="block text-sm font-medium">To Size</label>
+          <input
+            type="text"
+            name="toSize"
+            placeholder="e.g., 1 gallon"
             className="border p-2 rounded w-full"
           />
         </div>
@@ -94,12 +106,23 @@ export default function NewPlantIntakePage() {
           />
         </div>
 
-        {/* Vendor */}
+        {/* Location */}
         <div>
-          <label className="block text-sm font-medium">Vendor</label>
+          <label className="block text-sm font-medium">Location</label>
           <input
             type="text"
-            name="vendor"
+            name="location"
+            placeholder="e.g., Greenhouse A, Bench 3"
+            className="border p-2 rounded w-full"
+          />
+        </div>
+
+        {/* Employee */}
+        <div>
+          <label className="block text-sm font-medium">Employee</label>
+          <input
+            type="text"
+            name="employee"
             className="border p-2 rounded w-full"
           />
         </div>
@@ -122,9 +145,8 @@ export default function NewPlantIntakePage() {
           >
             Save
           </button>
-
           <a
-            href="/plant-intake"
+            href="/transplant-log"
             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
           >
             Cancel

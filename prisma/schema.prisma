@@ -24,16 +24,17 @@ enum Role {
 // ----------------------------
 
 model Business {
-  id           String         @id @default(cuid())
-  name         String
-  logoUrl      String?
-  theme        String?
-
-  users        User[]
-  plantIntakes PlantIntake[]
-
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id             String           @id @default(cuid())
+  name           String
+  logoUrl        String?
+  theme          String?
+  users          User[]
+  plantIntakes   PlantIntake[]
+  productIntakes ProductIntake[]  // <-- ADD THIS LINE
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  transplantLogs TransplantLog[]
+  treatmentTrackings TreatmentTracking[]
 }
 
 model User {
@@ -72,4 +73,79 @@ model PlantIntake {
   @@index([businessId])
   @@index([sku])
   @@index([dateReceived])
+}
+
+model ProductIntake {
+  id            String     @id @default(cuid())
+  businessId    String
+  business      Business   @relation(fields: [businessId], references: [id])
+  
+  productName   String?
+  category      String?
+  brand         String?
+  sku           String?
+  quantity      Int?
+  unit          String?
+  unitCost      Float?
+  totalCost     Float?
+  vendor        String?
+  dateReceived  DateTime?  @db.Timestamp(6)
+  notes         String?
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([category])
+  @@index([dateReceived])
+}
+
+model TransplantLog {
+  id              String     @id @default(cuid())
+  businessId      String
+  business        Business   @relation(fields: [businessId], references: [id])
+  
+  transplantDate  DateTime?  @db.Timestamp(6)
+  plantName       String?
+  genus           String?
+  cultivar        String?
+  fromSize        String?
+  toSize          String?
+  quantity        Int?
+  location        String?
+  employee        String?
+  notes           String?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([transplantDate])
+  @@index([plantName])
+}
+
+model TreatmentTracking {
+  id              String     @id @default(cuid())
+  businessId      String
+  business        Business   @relation(fields: [businessId], references: [id])
+  
+  treatmentDate   DateTime?  @db.Timestamp(6)
+  plantName       String?
+  genus           String?
+  cultivar        String?
+  treatmentType   String?
+  product         String?
+  dosage          String?
+  quantity        Int?
+  location        String?
+  reason          String?
+  employee        String?
+  notes           String?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([treatmentDate])
+  @@index([treatmentType])
 }
