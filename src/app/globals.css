@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.home-btn {
+  display: block;
+  padding: 1.25rem;
+  background: white;
+  border-radius: 0.75rem;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+}
+.home-btn:hover {
+  background: #f9fafb;
+}
+
+.clock-btn {
+  color: white;
+  padding: 1rem;
+  font-size: 1.25rem;
+  border-radius: 0.75rem;
+}
+.clock-btn:hover {
+  opacity: 0.9;
+}
