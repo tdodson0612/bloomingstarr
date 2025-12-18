@@ -1,0 +1,24 @@
+Create a Roles & Permissions CONTRACT (No Code Yet)
+
+Goal: Everyone codes against the same mental model
+
+Write this down (README or Notion — not code):
+
+Roles
+
+Owner
+
+Manager
+
+Employee
+
+Permissions (Phase 1)
+Feature	Owner	Manager	Employee
+View data tables	✅	✅	✅
+Edit table names	✅	✅	❌
+Edit columns	✅	✅	❌
+Add/edit formulas	✅	✅	❌
+Clock in/out	✅	✅	✅
+Edit schedules	✅	✅	❌
+
+⚠️ This becomes law. Code follows this later.

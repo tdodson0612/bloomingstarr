@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db";
 import type { PlantIntake, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
+import ConfirmSubmitButton from "./ConfirmSubmitButton";
+
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -16,26 +19,30 @@ function toStringArray(value: string | string[] | undefined): string[] {
 export default async function PlantIntakePage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams?: SearchParams;
 }) {
-  // Await the searchParams promise
-  const params = await searchParams;
 
   // --- Read filters from URL ---
-  const search = (params.search as string) || "";
-  const vendorParam = params.vendor;
+  const search = (searchParams?.search as string) || "";
+  const vendorParam = searchParams?.vendor;
   const vendorsSelected = toStringArray(vendorParam);
 
-  const genus = (params.genus as string) || "";
-  const cultivar = (params.cultivar as string) || "";
-  const size = (params.size as string) || "";
+  const genus = (searchParams?.genus as string) || "";
+  const cultivar = (searchParams?.cultivar as string) || "";
+  const size = (searchParams?.size as string) || "";
 
-  const qtyMin = (params.qtyMin as string) || "";
-  const qtyMax = (params.qtyMax as string) || "";
+  const qtyMin = (searchParams?.qtyMin as string) || "";
+  const qtyMax = (searchParams?.qtyMax as string) || "";
 
-  const dateFromParam = (params.dateFrom as string) || "";
-  const dateToParam = (params.dateTo as string) || "";
-  const quickRange = (params.quickRange as string) || "";
+  const dateFromParam = (searchParams?.dateFrom as string) || "";
+  const dateToParam = (searchParams?.dateTo as string) || "";
+  const quickRange = (searchParams?.quickRange as string) || "";
+
+
+  // temp placement //
+  
+  const table = getTableBySlug("plant-intake");
+  const columns = table ? getColumnsForTable(table.id) : [];
 
   // --- Build date range based on quickRange if present ---
   let dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
@@ -298,15 +305,9 @@ export default async function PlantIntakePage({
                         });
                       }}
                     >
-                      <button
-                        type="submit"
-                        className="text-red-600 hover:underline"
-                        onClick={(e) => {
-                          if (!confirm("Delete this record?")) e.preventDefault();
-                        }}
-                      >
+                      <ConfirmSubmitButton confirmText="Delete this record?">
                         Delete
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   </div>
                 </td>
