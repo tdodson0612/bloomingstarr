@@ -19,24 +19,27 @@ function toStringArray(value: string | string[] | undefined): string[] {
 export default async function PlantIntakePage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const params = await searchParams;
+
+  
 
   // --- Read filters from URL ---
-  const search = (searchParams?.search as string) || "";
-  const vendorParam = searchParams?.vendor;
+  const search = (params.search as string) || "";
+  const vendorParam = params.vendor;
   const vendorsSelected = toStringArray(vendorParam);
 
-  const genus = (searchParams?.genus as string) || "";
-  const cultivar = (searchParams?.cultivar as string) || "";
-  const size = (searchParams?.size as string) || "";
+  const genus = (params.genus as string) || "";
+  const cultivar = (params.cultivar as string) || "";
+  const size = (params.size as string) || "";
 
-  const qtyMin = (searchParams?.qtyMin as string) || "";
-  const qtyMax = (searchParams?.qtyMax as string) || "";
+  const qtyMin = (params.qtyMin as string) || "";
+  const qtyMax = (params.qtyMax as string) || "";
 
-  const dateFromParam = (searchParams?.dateFrom as string) || "";
-  const dateToParam = (searchParams?.dateTo as string) || "";
-  const quickRange = (searchParams?.quickRange as string) || "";
+  const dateFromParam = (params.dateFrom as string) || "";
+  const dateToParam = (params.dateTo as string) || "";
+  const quickRange = (params.quickRange as string) || "";
 
 
   // temp placement //
