@@ -1,5 +1,7 @@
 "use client";
+// src/app/login/page.tsx
 
+import { loginWithPin } from "@/lib/actions/login";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -19,11 +21,17 @@ export default function LoginPage() {
     setInput((prev) => prev.slice(0, -1));
   }
 
-  function handleEnter() {
-    // TEMP: no auth yet
-    // Later: verify employee ID + PIN
-    router.push("/home");
-  }
+  async function handleEnter() {
+    const res = await loginWithPin(input);
+
+    if (res.ok) {
+        router.push("/home");
+    } else {
+        alert("Invalid login");
+        setInput("");
+    }
+    }
+
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">

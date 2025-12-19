@@ -3,10 +3,11 @@ import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
   const userId = req.cookies.get("userId")?.value;
+  const pathname = req.nextUrl.pathname;
 
-  const isLogin = req.nextUrl.pathname.startsWith("/login");
+  const isAuthRoute = pathname.startsWith("/login");
 
-  if (!userId && !isLogin) {
+  if (!userId && !isAuthRoute) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
