@@ -25,26 +25,213 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Home page buttons */
 .home-btn {
   display: block;
   padding: 1.25rem;
-  background: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
   border-radius: 0.75rem;
   text-align: center;
   font-size: 1.25rem;
-  font-weight: 500;
-  border: 1px solid #e5e7eb;
-}
-.home-btn:hover {
-  background: #f9fafb;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+  transition: all 0.2s;
 }
 
+.home-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* Time clock buttons */
 .clock-btn {
   color: white;
   padding: 1rem;
   font-size: 1.25rem;
+  font-weight: bold;
   border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
 }
+
 .clock-btn:hover {
-  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Make all buttons colorful and text bold */
+button[type="submit"], 
+.px-4.py-2.bg-blue-600,
+.px-4.py-2.bg-green-600,
+.px-4.py-2.bg-red-600 {
+  font-weight: bold !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.2s !important;
+}
+
+button[type="submit"]:hover,
+.px-4.py-2.bg-blue-600:hover,
+.px-4.py-2.bg-green-600:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Make all text darker and bolder */
+h1, h2, h3, label, th {
+  font-weight: bold !important;
+  color: #1f2937 !important;
+}
+
+/* Style main action buttons */
+a[href*="/new"], 
+button[type="submit"]:not([class*="bg-red"]):not([class*="bg-yellow"]) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  font-weight: bold !important;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3) !important;
+  transition: all 0.2s !important;
+}
+
+a[href*="/new"]:hover,
+button[type="submit"]:not([class*="bg-red"]):not([class*="bg-yellow"]):hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* Edit buttons */
+a[href*="/edit"] {
+  color: #2563eb !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+
+a[href*="/edit"]:hover {
+  color: #1d4ed8 !important;
+  text-decoration: underline !important;
+}
+
+/* Delete buttons */
+button.text-red-600,
+.px-4.py-2.bg-red-600 {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: white !important;
+  font-weight: bold !important;
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3) !important;
+}
+
+button.text-red-600:hover,
+.px-4.py-2.bg-red-600:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4) !important;
+}
+
+/* Cancel/Back buttons */
+a[href*="/plant-intake"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/product-intake"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/transplant-log"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/treatment-tracking"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/fertilizer-log"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/overhead-expenses"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/pricing"]:not([href*="/new"]):not([href*="/edit"]),
+a[href*="/sales"]:not([href*="/new"]):not([href*="/edit"]),
+.px-4.py-2.bg-gray-300 {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
+  color: white !important;
+  font-weight: bold !important;
+  box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3) !important;
+}
+
+/* Table styling */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+thead tr {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+}
+
+tbody tr:hover {
+  background-color: #f0f9ff !important;
+  transition: background-color 0.15s !important;
+}
+
+/* Filter bar */
+.bg-white.p-4.rounded.border.shadow-sm {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  border: 2px solid #e5e7eb !important;
+}
+
+/* Login page styling */
+.min-h-screen h1 {
+  font-weight: bold !important;
+  font-size: 2rem !important;
+  color: #1f2937 !important;
+}
+
+.min-h-screen label {
+  font-weight: 600 !important;
+  color: #374151 !important;
+  font-size: 0.875rem !important;
+}
+
+.min-h-screen input[readonly] {
+  background-color: white !important;
+  border: 2px solid #d1d5db !important;
+  color: #111827 !important;
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+}
+
+/* Number pad buttons */
+.min-h-screen button:not(.bg-blue-600):not(.bg-red-100):not(.bg-yellow-100) {
+  font-weight: bold !important;
+  border: 2px solid #e5e7eb !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  background: white !important;
+  color: #1f2937 !important;
+}
+
+.min-h-screen button:not(.bg-blue-600):not(.bg-red-100):not(.bg-yellow-100):hover {
+  background: #f3f4f6 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Clear button - red */
+.bg-red-100 {
+  background: linear-gradient(135deg, #fca5a5 0%, #f87171 100%) !important;
+  color: #7f1d1d !important;
+  font-weight: bold !important;
+}
+
+/* Delete button - yellow */
+.bg-yellow-100 {
+  background: linear-gradient(135deg, #fde047 0%, #facc15 100%) !important;
+  color: #713f12 !important;
+  font-weight: bold !important;
+}
+
+/* Next/Login button */
+.min-h-screen .bg-blue-600 {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  font-weight: bold !important;
+  font-size: 1.125rem !important;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3) !important;
+}
+
+.min-h-screen .bg-blue-600:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* Save Changes button - green */
+.px-4.py-2.bg-green-600 {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+  color: white !important;
+}
+
+.px-4.py-2.bg-green-600:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 12px rgba(22, 163, 74, 0.4) !important;
 }

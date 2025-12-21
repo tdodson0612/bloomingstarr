@@ -31,22 +31,27 @@ model Business {
   theme          String?
   users          User[]
   plantIntakes   PlantIntake[]
-  productIntakes ProductIntake[]  // <-- ADD THIS LINE
+  productIntakes ProductIntake[]  
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   transplantLogs TransplantLog[]
   treatmentTrackings TreatmentTracking[]
+  fertilizerLogs FertilizerLog[]
+  overheadExpenses OverheadExpenses[]
+  sales          Sales[]
+  pricings       Pricing[]
+
 }
 
 model User {
   id          String     @id @default(cuid())
   email       String     @unique
   name        String?
+  employeeId  String?    @unique  // ADD THIS
+  password    String?                // ADD THIS (will be hashed)
   role        Role       @default(EMPLOYEE)
-  loginCode   String   @unique
   businessId  String
   business    Business   @relation(fields: [businessId], references: [id])
-
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -149,4 +154,102 @@ model TreatmentTracking {
   @@index([businessId])
   @@index([treatmentDate])
   @@index([treatmentType])
+}
+
+model FertilizerLog {
+  id                String     @id @default(cuid())
+  businessId        String
+  business          Business   @relation(fields: [businessId], references: [id])
+  
+  applicationDate   DateTime?  @db.Timestamp(6)
+  plantName         String?
+  genus             String?
+  cultivar          String?
+  fertilizerType    String?
+  brand             String?
+  npkRatio          String?
+  applicationRate   String?
+  quantity          Int?
+  location          String?
+  employee          String?
+  notes             String?
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([applicationDate])
+  @@index([fertilizerType])
+}
+
+model OverheadExpenses {
+  id              String     @id @default(cuid())
+  businessId      String
+  business        Business   @relation(fields: [businessId], references: [id])
+  
+  expenseDate     DateTime?  @db.Timestamp(6)
+  category        String?
+  description     String?
+  vendor          String?
+  amount          Float?
+  paymentMethod   String?
+  invoiceNumber   String?
+  employee        String?
+  notes           String?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([expenseDate])
+  @@index([category])
+}
+
+model Sales {
+  id              String     @id @default(cuid())
+  businessId      String
+  business        Business   @relation(fields: [businessId], references: [id])
+  
+  saleDate        DateTime?  @db.Timestamp(6)
+  customerName    String?
+  plantName       String?
+  genus           String?
+  cultivar        String?
+  size            String?
+  quantity        Int?
+  unitPrice       Float?
+  totalPrice      Float?
+  paymentMethod   String?
+  employee        String?
+  notes           String?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([saleDate])
+  @@index([customerName])
+}
+
+model Pricing {
+  id              String     @id @default(cuid())
+  businessId      String
+  business        Business   @relation(fields: [businessId], references: [id])
+  
+  plantName       String?
+  genus           String?
+  cultivar        String?
+  size            String?
+  basePrice       Float?
+  markup          Float?
+  finalPrice      Float?
+  category        String?
+  notes           String?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@index([businessId])
+  @@index([plantName])
+  @@index([category])
 }

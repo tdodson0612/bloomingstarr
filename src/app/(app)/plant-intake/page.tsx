@@ -1,11 +1,12 @@
 // app/plant-intake/page.tsx
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { canEditData } from "@/lib/roles";
 import type { PlantIntake, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
 import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
-
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -21,9 +22,15 @@ export default async function PlantIntakePage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Check permissions
+  const session = await getSession();
+  const canEdit = session ? canEditData(session.role) : false;
+
   const params = await searchParams;
 
-  
+  // temp placement //
+  const table = getTableBySlug("plant-intake");
+  const columns = table ? getColumnsForTable(table.id) : [];
 
   // --- Read filters from URL ---
   const search = (params.search as string) || "";
@@ -41,12 +48,6 @@ export default async function PlantIntakePage({
   const dateToParam = (params.dateTo as string) || "";
   const quickRange = (params.quickRange as string) || "";
 
-
-  // temp placement //
-  
-  const table = getTableBySlug("plant-intake");
-  const columns = table ? getColumnsForTable(table.id) : [];
-
   // --- Build date range based on quickRange if present ---
   let dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
   let dateTo = dateToParam ? new Date(dateToParam) : undefined;
@@ -56,8 +57,8 @@ export default async function PlantIntakePage({
 
   function startOfWeek(d: Date) {
     const date = new Date(d);
-    const day = date.getDay(); // 0 (Sun) -> 6 (Sat)
-    const diff = date.getDate() - day; // start week on Sunday
+    const day = date.getDay();
+    const diff = date.getDate() - day;
     return new Date(date.setDate(diff));
   }
 
@@ -201,25 +202,20 @@ export default async function PlantIntakePage({
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-
   const genuses = genusOptionsRaw
     .map((v: { genus: string | null }) => v.genus)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
-
 
   const cultivars = cultivarOptionsRaw
     .map((v: { cultivar: string | null }) => v.cultivar)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-
   const sizes = sizeOptionsRaw
     .map((v: { size: string | null }) => v.size)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
-
-
 
   return (
     <div className="p-6">
@@ -227,12 +223,15 @@ export default async function PlantIntakePage({
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">Plant Intake</h1>
 
-        <Link
-          href="/plant-intake/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          + Add Plant
-        </Link>
+        {/* Only show Add button if user can edit */}
+        {canEdit && (
+          <Link
+            href="/plant-intake/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            + Add Plant
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -268,7 +267,7 @@ export default async function PlantIntakePage({
               <th className="py-2 px-2">Qty</th>
               <th className="py-2 px-2">Vendor</th>
               <th className="py-2 px-2">Notes</th>
-              <th className="py-2 px-2">Actions</th>
+              {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
 
@@ -288,32 +287,34 @@ export default async function PlantIntakePage({
                 <td className="py-2 px-2">{r.vendor || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
-                {/* ACTIONS */}
-                <td className="py-2 px-2">
-                  <div className="flex gap-3">
-                    {/* EDIT */}
-                    <Link
-                      href={`/plant-intake/${r.id}/edit`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </Link>
+                {/* ACTIONS - Only show if user can edit */}
+                {canEdit && (
+                  <td className="py-2 px-2">
+                    <div className="flex gap-3">
+                      {/* EDIT */}
+                      <Link
+                        href={`/plant-intake/${r.id}/edit`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </Link>
 
-                    {/* DELETE */}
-                    <form
-                      action={async () => {
-                        "use server";
-                        await prisma.plantIntake.delete({
-                          where: { id: r.id },
-                        });
-                      }}
-                    >
-                      <ConfirmSubmitButton confirmText="Delete this record?">
-                        Delete
-                      </ConfirmSubmitButton>
-                    </form>
-                  </div>
-                </td>
+                      {/* DELETE */}
+                      <form
+                        action={async () => {
+                          "use server";
+                          await prisma.plantIntake.delete({
+                            where: { id: r.id },
+                          });
+                        }}
+                      >
+                        <ConfirmSubmitButton confirmText="Delete this record?">
+                          Delete
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

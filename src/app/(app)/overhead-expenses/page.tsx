@@ -1,8 +1,8 @@
-// app/product-intake/page.tsx
+// app/overhead-expenses/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
-import type { ProductIntake, Prisma } from "@prisma/client";
+import type { OverheadExpenses, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
 
@@ -17,7 +17,7 @@ function toStringArray(value: string | string[] | undefined): string[] {
     : value.split(",").map((v) => v.trim()).filter(Boolean);
 }
 
-export default async function ProductIntakePage({
+export default async function OverheadExpensesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -34,10 +34,10 @@ export default async function ProductIntakePage({
   const vendorsSelected = toStringArray(vendorParam);
 
   const category = (params.category as string) || "";
-  const brand = (params.brand as string) || "";
+  const paymentMethod = (params.paymentMethod as string) || "";
 
-  const qtyMin = (params.qtyMin as string) || "";
-  const qtyMax = (params.qtyMax as string) || "";
+  const amountMin = (params.amountMin as string) || "";
+  const amountMax = (params.amountMax as string) || "";
 
   const dateFromParam = (params.dateFrom as string) || "";
   const dateToParam = (params.dateTo as string) || "";
@@ -118,17 +118,17 @@ export default async function ProductIntakePage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.ProductIntakeWhereInput = {};
+  const where: Prisma.OverheadExpensesWhereInput = {};
 
   if (search) {
     where.OR = [
-      { sku: { contains: search, mode: "insensitive" } },
-      { productName: { contains: search, mode: "insensitive" } },
       { category: { contains: search, mode: "insensitive" } },
-      { brand: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
       { vendor: { contains: search, mode: "insensitive" } },
+      { paymentMethod: { contains: search, mode: "insensitive" } },
+      { invoiceNumber: { contains: search, mode: "insensitive" } },
+      { employee: { contains: search, mode: "insensitive" } },
       { notes: { contains: search, mode: "insensitive" } },
-      { unit: { contains: search, mode: "insensitive" } },
     ];
   }
 
@@ -140,50 +140,54 @@ export default async function ProductIntakePage({
     where.category = { equals: category };
   }
 
-  if (brand) {
-    where.brand = { equals: brand };
+  if (paymentMethod) {
+    where.paymentMethod = { equals: paymentMethod };
   }
 
-  if (qtyMin || qtyMax) {
-    where.quantity = {};
-    if (qtyMin) {
-      where.quantity.gte = Number(qtyMin);
+  if (amountMin || amountMax) {
+    where.amount = {};
+    if (amountMin) {
+      where.amount.gte = Number(amountMin);
     }
-    if (qtyMax) {
-      where.quantity.lte = Number(qtyMax);
+    if (amountMax) {
+      where.amount.lte = Number(amountMax);
     }
   }
 
   if (dateFrom || dateTo) {
-    where.dateReceived = {};
+    where.expenseDate = {};
     if (dateFrom) {
-      where.dateReceived.gte = dateFrom;
+      where.expenseDate.gte = dateFrom;
     }
     if (dateTo) {
-      where.dateReceived.lte = dateTo;
+      where.expenseDate.lte = dateTo;
     }
   }
 
   // --- Fetch records & distinct filter options ---
-  const [records, vendorOptionsRaw, categoryOptionsRaw, brandOptionsRaw] =
-    await Promise.all([
-      prisma.productIntake.findMany({
-        where,
-        orderBy: { dateReceived: "desc" },
-      }),
-      prisma.productIntake.findMany({
-        select: { vendor: true },
-        distinct: ["vendor"],
-      }),
-      prisma.productIntake.findMany({
-        select: { category: true },
-        distinct: ["category"],
-      }),
-      prisma.productIntake.findMany({
-        select: { brand: true },
-        distinct: ["brand"],
-      }),
-    ]);
+  const [
+    records,
+    vendorOptionsRaw,
+    categoryOptionsRaw,
+    paymentMethodOptionsRaw,
+  ] = await Promise.all([
+    prisma.overheadExpenses.findMany({
+      where,
+      orderBy: { expenseDate: "desc" },
+    }),
+    prisma.overheadExpenses.findMany({
+      select: { vendor: true },
+      distinct: ["vendor"],
+    }),
+    prisma.overheadExpenses.findMany({
+      select: { category: true },
+      distinct: ["category"],
+    }),
+    prisma.overheadExpenses.findMany({
+      select: { paymentMethod: true },
+      distinct: ["paymentMethod"],
+    }),
+  ]);
 
   const vendors = vendorOptionsRaw
     .map((v: { vendor: string | null }) => v.vendor)
@@ -195,23 +199,26 @@ export default async function ProductIntakePage({
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-  const brands = brandOptionsRaw
-    .map((v: { brand: string | null }) => v.brand)
+  const paymentMethods = paymentMethodOptionsRaw
+    .map((v: { paymentMethod: string | null }) => v.paymentMethod)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
+
+  // Calculate total
+  const total = records.reduce((sum, r) => sum + (r.amount || 0), 0);
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Product Intake</h1>
+        <h1 className="text-2xl font-semibold">Overhead Expenses</h1>
 
         {canEdit && (
           <Link
-            href="/product-intake/new"
+            href="/overhead-expenses/new"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            + Add Product
+            + Add Expense
           </Link>
         )}
       </div>
@@ -222,16 +229,26 @@ export default async function ProductIntakePage({
           search={search}
           vendorsSelected={vendorsSelected}
           category={category}
-          brand={brand}
-          qtyMin={qtyMin}
-          qtyMax={qtyMax}
+          paymentMethod={paymentMethod}
+          amountMin={amountMin}
+          amountMax={amountMax}
           dateFrom={dateFromParam}
           dateTo={dateToParam}
           quickRange={quickRange}
           vendorOptions={vendors}
           categoryOptions={categories}
-          brandOptions={brands}
+          paymentMethodOptions={paymentMethods}
         />
+      </div>
+
+      {/* Summary */}
+      <div className="bg-white shadow p-4 rounded border mb-4">
+        <div className="flex justify-between items-center">
+          <span className="text-lg font-medium">Total Expenses:</span>
+          <span className="text-2xl font-bold text-red-600">
+            ${total.toFixed(2)}
+          </span>
+        </div>
       </div>
 
       {/* Table */}
@@ -240,59 +257,51 @@ export default async function ProductIntakePage({
           <thead>
             <tr className="border-b bg-gray-50">
               <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">Product Name</th>
               <th className="py-2 px-2">Category</th>
-              <th className="py-2 px-2">Brand</th>
-              <th className="py-2 px-2">SKU</th>
-              <th className="py-2 px-2">Qty</th>
-              <th className="py-2 px-2">Unit</th>
-              <th className="py-2 px-2">Unit Cost</th>
-              <th className="py-2 px-2">Total Cost</th>
+              <th className="py-2 px-2">Description</th>
               <th className="py-2 px-2">Vendor</th>
+              <th className="py-2 px-2">Amount</th>
+              <th className="py-2 px-2">Payment Method</th>
+              <th className="py-2 px-2">Invoice #</th>
+              <th className="py-2 px-2">Employee</th>
               <th className="py-2 px-2">Notes</th>
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
 
           <tbody>
-            {records.map((r: ProductIntake) => (
+            {records.map((r: OverheadExpenses) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
                 <td className="py-2 px-2">
-                  {r.dateReceived
-                    ? r.dateReceived.toISOString().slice(0, 10)
+                  {r.expenseDate
+                    ? r.expenseDate.toISOString().slice(0, 10)
                     : "-"}
                 </td>
-                <td className="py-2 px-2">{r.productName || "-"}</td>
                 <td className="py-2 px-2">{r.category || "-"}</td>
-                <td className="py-2 px-2">{r.brand || "-"}</td>
-                <td className="py-2 px-2">{r.sku || "-"}</td>
-                <td className="py-2 px-2">{r.quantity ?? "-"}</td>
-                <td className="py-2 px-2">{r.unit || "-"}</td>
-                <td className="py-2 px-2">
-                  {r.unitCost ? `$${r.unitCost.toFixed(2)}` : "-"}
-                </td>
-                <td className="py-2 px-2">
-                  {r.totalCost ? `$${r.totalCost.toFixed(2)}` : "-"}
-                </td>
+                <td className="py-2 px-2">{r.description || "-"}</td>
                 <td className="py-2 px-2">{r.vendor || "-"}</td>
+                <td className="py-2 px-2">
+                  {r.amount ? `$${r.amount.toFixed(2)}` : "-"}
+                </td>
+                <td className="py-2 px-2">{r.paymentMethod || "-"}</td>
+                <td className="py-2 px-2">{r.invoiceNumber || "-"}</td>
+                <td className="py-2 px-2">{r.employee || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
                 {canEdit && (
                   <td className="py-2 px-2">
                     <div className="flex gap-3">
-                      {/* EDIT */}
                       <Link
-                        href={`/product-intake/${r.id}/edit`}
+                        href={`/overhead-expenses/${r.id}/edit`}
                         className="text-blue-600 hover:underline"
                       >
                         Edit
                       </Link>
 
-                      {/* DELETE */}
                       <form
                         action={async () => {
                           "use server";
-                          await prisma.productIntake.delete({
+                          await prisma.overheadExpenses.delete({
                             where: { id: r.id },
                           });
                         }}
@@ -318,7 +327,7 @@ export default async function ProductIntakePage({
 
         {records.length === 0 && (
           <p className="text-gray-500 text-center py-4">
-            No product intake records match your filters.
+            No expense records match your filters.
           </p>
         )}
       </div>

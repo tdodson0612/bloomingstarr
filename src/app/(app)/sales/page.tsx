@@ -1,8 +1,8 @@
-// app/product-intake/page.tsx
+// app/sales/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
-import type { ProductIntake, Prisma } from "@prisma/client";
+import type { Sales, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
 
@@ -17,7 +17,7 @@ function toStringArray(value: string | string[] | undefined): string[] {
     : value.split(",").map((v) => v.trim()).filter(Boolean);
 }
 
-export default async function ProductIntakePage({
+export default async function SalesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -30,11 +30,12 @@ export default async function ProductIntakePage({
 
   // --- Read filters from URL ---
   const search = (params.search as string) || "";
-  const vendorParam = params.vendor;
-  const vendorsSelected = toStringArray(vendorParam);
+  const employeeParam = params.employee;
+  const employeesSelected = toStringArray(employeeParam);
 
-  const category = (params.category as string) || "";
-  const brand = (params.brand as string) || "";
+  const customerName = (params.customerName as string) || "";
+  const plantName = (params.plantName as string) || "";
+  const paymentMethod = (params.paymentMethod as string) || "";
 
   const qtyMin = (params.qtyMin as string) || "";
   const qtyMax = (params.qtyMax as string) || "";
@@ -118,30 +119,35 @@ export default async function ProductIntakePage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.ProductIntakeWhereInput = {};
+  const where: Prisma.SalesWhereInput = {};
 
   if (search) {
     where.OR = [
-      { sku: { contains: search, mode: "insensitive" } },
-      { productName: { contains: search, mode: "insensitive" } },
-      { category: { contains: search, mode: "insensitive" } },
-      { brand: { contains: search, mode: "insensitive" } },
-      { vendor: { contains: search, mode: "insensitive" } },
+      { customerName: { contains: search, mode: "insensitive" } },
+      { plantName: { contains: search, mode: "insensitive" } },
+      { genus: { contains: search, mode: "insensitive" } },
+      { cultivar: { contains: search, mode: "insensitive" } },
+      { size: { contains: search, mode: "insensitive" } },
+      { paymentMethod: { contains: search, mode: "insensitive" } },
+      { employee: { contains: search, mode: "insensitive" } },
       { notes: { contains: search, mode: "insensitive" } },
-      { unit: { contains: search, mode: "insensitive" } },
     ];
   }
 
-  if (vendorsSelected.length > 0) {
-    where.vendor = { in: vendorsSelected };
+  if (employeesSelected.length > 0) {
+    where.employee = { in: employeesSelected };
   }
 
-  if (category) {
-    where.category = { equals: category };
+  if (customerName) {
+    where.customerName = { equals: customerName };
   }
 
-  if (brand) {
-    where.brand = { equals: brand };
+  if (plantName) {
+    where.plantName = { equals: plantName };
+  }
+
+  if (paymentMethod) {
+    where.paymentMethod = { equals: paymentMethod };
   }
 
   if (qtyMin || qtyMax) {
@@ -155,63 +161,87 @@ export default async function ProductIntakePage({
   }
 
   if (dateFrom || dateTo) {
-    where.dateReceived = {};
+    where.saleDate = {};
     if (dateFrom) {
-      where.dateReceived.gte = dateFrom;
+      where.saleDate.gte = dateFrom;
     }
     if (dateTo) {
-      where.dateReceived.lte = dateTo;
+      where.saleDate.lte = dateTo;
     }
   }
 
   // --- Fetch records & distinct filter options ---
-  const [records, vendorOptionsRaw, categoryOptionsRaw, brandOptionsRaw] =
-    await Promise.all([
-      prisma.productIntake.findMany({
-        where,
-        orderBy: { dateReceived: "desc" },
-      }),
-      prisma.productIntake.findMany({
-        select: { vendor: true },
-        distinct: ["vendor"],
-      }),
-      prisma.productIntake.findMany({
-        select: { category: true },
-        distinct: ["category"],
-      }),
-      prisma.productIntake.findMany({
-        select: { brand: true },
-        distinct: ["brand"],
-      }),
-    ]);
+  const [
+    records,
+    employeeOptionsRaw,
+    customerOptionsRaw,
+    plantNameOptionsRaw,
+    paymentMethodOptionsRaw,
+  ] = await Promise.all([
+    prisma.sales.findMany({
+      where,
+      orderBy: { saleDate: "desc" },
+    }),
+    prisma.sales.findMany({
+      select: { employee: true },
+      distinct: ["employee"],
+    }),
+    prisma.sales.findMany({
+      select: { customerName: true },
+      distinct: ["customerName"],
+    }),
+    prisma.sales.findMany({
+      select: { plantName: true },
+      distinct: ["plantName"],
+    }),
+    prisma.sales.findMany({
+      select: { paymentMethod: true },
+      distinct: ["paymentMethod"],
+    }),
+  ]);
 
-  const vendors = vendorOptionsRaw
-    .map((v: { vendor: string | null }) => v.vendor)
+  const employees = employeeOptionsRaw
+    .map((v: { employee: string | null }) => v.employee)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-  const categories = categoryOptionsRaw
-    .map((v: { category: string | null }) => v.category)
+  const customers = customerOptionsRaw
+    .map((v: { customerName: string | null }) => v.customerName)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
 
-  const brands = brandOptionsRaw
-    .map((v: { brand: string | null }) => v.brand)
+  const plantNames = plantNameOptionsRaw
+    .map((v: { plantName: string | null }) => v.plantName)
     .filter((v): v is string => v !== null)
     .sort((a: string, b: string) => a.localeCompare(b));
+
+  const paymentMethods = paymentMethodOptionsRaw
+    .map((v: { paymentMethod: string | null }) => v.paymentMethod)
+    .filter((v): v is string => v !== null)
+    .sort((a: string, b: string) => a.localeCompare(b));
+
+  // Calculate totals
+  const totalRevenue = records.reduce(
+    (sum, r) => sum + (r.totalPrice || 0),
+    0
+  );
+  const totalUnits = records.reduce(
+    (sum, r) => sum + (r.quantity || 0),
+    0
+  );
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Product Intake</h1>
+        <h1 className="text-2xl font-semibold">Sales</h1>
 
         {canEdit && (
           <Link
-            href="/product-intake/new"
+            href="/sales/new"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            + Add Product
+            + Add Sale
           </Link>
         )}
       </div>
@@ -220,79 +250,95 @@ export default async function ProductIntakePage({
       <div className="mb-4">
         <FilterBar
           search={search}
-          vendorsSelected={vendorsSelected}
-          category={category}
-          brand={brand}
+          employeesSelected={employeesSelected}
+          customerName={customerName}
+          plantName={plantName}
+          paymentMethod={paymentMethod}
           qtyMin={qtyMin}
           qtyMax={qtyMax}
           dateFrom={dateFromParam}
           dateTo={dateToParam}
           quickRange={quickRange}
-          vendorOptions={vendors}
-          categoryOptions={categories}
-          brandOptions={brands}
+          employeeOptions={employees}
+          customerOptions={customers}
+          plantNameOptions={plantNames}
+          paymentMethodOptions={paymentMethods}
         />
+      </div>
+
+      {/* Summary */}
+      <div className="bg-white shadow p-4 rounded border mb-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm text-gray-600">Total Revenue:</span>
+            <p className="text-2xl font-bold text-green-600">
+              ${totalRevenue.toFixed(2)}
+            </p>
+          </div>
+          <div>
+            <span className="text-sm text-gray-600">Total Units Sold:</span>
+            <p className="text-2xl font-bold text-blue-600">{totalUnits}</p>
+          </div>
+        </div>
       </div>
 
       {/* Table */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
-        <table className="w-full text-left text-sm min-w-[1200px]">
+        <table className="w-full text-left text-sm min-w-[1300px]">
           <thead>
             <tr className="border-b bg-gray-50">
               <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">Product Name</th>
-              <th className="py-2 px-2">Category</th>
-              <th className="py-2 px-2">Brand</th>
-              <th className="py-2 px-2">SKU</th>
+              <th className="py-2 px-2">Customer</th>
+              <th className="py-2 px-2">Plant Name</th>
+              <th className="py-2 px-2">Genus</th>
+              <th className="py-2 px-2">Cultivar</th>
+              <th className="py-2 px-2">Size</th>
               <th className="py-2 px-2">Qty</th>
-              <th className="py-2 px-2">Unit</th>
-              <th className="py-2 px-2">Unit Cost</th>
-              <th className="py-2 px-2">Total Cost</th>
-              <th className="py-2 px-2">Vendor</th>
+              <th className="py-2 px-2">Unit Price</th>
+              <th className="py-2 px-2">Total Price</th>
+              <th className="py-2 px-2">Payment</th>
+              <th className="py-2 px-2">Employee</th>
               <th className="py-2 px-2">Notes</th>
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
 
           <tbody>
-            {records.map((r: ProductIntake) => (
+            {records.map((r: Sales) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
                 <td className="py-2 px-2">
-                  {r.dateReceived
-                    ? r.dateReceived.toISOString().slice(0, 10)
-                    : "-"}
+                  {r.saleDate ? r.saleDate.toISOString().slice(0, 10) : "-"}
                 </td>
-                <td className="py-2 px-2">{r.productName || "-"}</td>
-                <td className="py-2 px-2">{r.category || "-"}</td>
-                <td className="py-2 px-2">{r.brand || "-"}</td>
-                <td className="py-2 px-2">{r.sku || "-"}</td>
+                <td className="py-2 px-2">{r.customerName || "-"}</td>
+                <td className="py-2 px-2">{r.plantName || "-"}</td>
+                <td className="py-2 px-2">{r.genus || "-"}</td>
+                <td className="py-2 px-2">{r.cultivar || "-"}</td>
+                <td className="py-2 px-2">{r.size || "-"}</td>
                 <td className="py-2 px-2">{r.quantity ?? "-"}</td>
-                <td className="py-2 px-2">{r.unit || "-"}</td>
                 <td className="py-2 px-2">
-                  {r.unitCost ? `$${r.unitCost.toFixed(2)}` : "-"}
+                  {r.unitPrice ? `$${r.unitPrice.toFixed(2)}` : "-"}
                 </td>
                 <td className="py-2 px-2">
-                  {r.totalCost ? `$${r.totalCost.toFixed(2)}` : "-"}
+                  {r.totalPrice ? `$${r.totalPrice.toFixed(2)}` : "-"}
                 </td>
-                <td className="py-2 px-2">{r.vendor || "-"}</td>
+                <td className="py-2 px-2">{r.paymentMethod || "-"}</td>
+                <td className="py-2 px-2">{r.employee || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
                 {canEdit && (
                   <td className="py-2 px-2">
                     <div className="flex gap-3">
-                      {/* EDIT */}
                       <Link
-                        href={`/product-intake/${r.id}/edit`}
+                        href={`/sales/${r.id}/edit`}
                         className="text-blue-600 hover:underline"
                       >
                         Edit
                       </Link>
 
-                      {/* DELETE */}
                       <form
                         action={async () => {
                           "use server";
-                          await prisma.productIntake.delete({
+                          await prisma.sales.delete({
                             where: { id: r.id },
                           });
                         }}
@@ -318,7 +364,7 @@ export default async function ProductIntakePage({
 
         {records.length === 0 && (
           <p className="text-gray-500 text-center py-4">
-            No product intake records match your filters.
+            No sales records match your filters.
           </p>
         )}
       </div>

@@ -1,5 +1,7 @@
 // app/transplant-log/page.tsx
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { canEditData } from "@/lib/roles";
 import type { TransplantLog, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
@@ -10,7 +12,9 @@ type SearchParams = {
 
 function toStringArray(value: string | string[] | undefined): string[] {
   if (!value) return [];
-  return Array.isArray(value) ? value : value.split(",").map((v) => v.trim()).filter(Boolean);
+  return Array.isArray(value)
+    ? value
+    : value.split(",").map((v) => v.trim()).filter(Boolean);
 }
 
 export default async function TransplantLogPage({
@@ -18,6 +22,10 @@ export default async function TransplantLogPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // --- Permissions ---
+  const session = await getSession();
+  const canEdit = session ? canEditData(session.role) : false;
+
   const params = await searchParams;
 
   // --- Read filters from URL ---
@@ -213,12 +221,14 @@ export default async function TransplantLogPage({
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">Transplant Log</h1>
 
-        <Link
-          href="/transplant-log/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          + Add Transplant
-        </Link>
+        {canEdit && (
+          <Link
+            href="/transplant-log/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            + Add Transplant
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -256,7 +266,7 @@ export default async function TransplantLogPage({
               <th className="py-2 px-2">Location</th>
               <th className="py-2 px-2">Employee</th>
               <th className="py-2 px-2">Notes</th>
-              <th className="py-2 px-2">Actions</th>
+              {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
 
@@ -278,38 +288,40 @@ export default async function TransplantLogPage({
                 <td className="py-2 px-2">{r.employee || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
-                {/* ACTIONS */}
-                <td className="py-2 px-2">
-                  <div className="flex gap-3">
-                    {/* EDIT */}
-                    <Link
-                      href={`/transplant-log/${r.id}/edit`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </Link>
+                {canEdit && (
+                  <td className="py-2 px-2">
+                    <div className="flex gap-3">
+                      {/* EDIT */}
+                      <Link
+                        href={`/transplant-log/${r.id}/edit`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </Link>
 
-                    {/* DELETE */}
-                    <form
-                      action={async () => {
-                        "use server";
-                        await prisma.transplantLog.delete({
-                          where: { id: r.id },
-                        });
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="text-red-600 hover:underline"
-                        onClick={(e) => {
-                          if (!confirm("Delete this record?")) e.preventDefault();
+                      {/* DELETE */}
+                      <form
+                        action={async () => {
+                          "use server";
+                          await prisma.transplantLog.delete({
+                            where: { id: r.id },
+                          });
                         }}
                       >
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
+                        <button
+                          type="submit"
+                          className="text-red-600 hover:underline"
+                          onClick={(e) => {
+                            if (!confirm("Delete this record?"))
+                              e.preventDefault();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
