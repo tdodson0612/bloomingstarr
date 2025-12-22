@@ -5,6 +5,7 @@ import { canEditData } from "@/lib/roles";
 import type { OverheadExpenses, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -22,7 +23,7 @@ export default async function OverheadExpensesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // --- Permissions ---
+  // Check permissions
   const session = await getSession();
   const canEdit = session ? canEditData(session.role) : false;
 
@@ -213,6 +214,7 @@ export default async function OverheadExpensesPage({
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">Overhead Expenses</h1>
 
+        {/* Only show Add button if user can edit */}
         {canEdit && (
           <Link
             href="/overhead-expenses/new"
@@ -288,9 +290,11 @@ export default async function OverheadExpensesPage({
                 <td className="py-2 px-2">{r.employee || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
+                {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
                   <td className="py-2 px-2">
                     <div className="flex gap-3">
+                      {/* EDIT */}
                       <Link
                         href={`/overhead-expenses/${r.id}/edit`}
                         className="text-blue-600 hover:underline"
@@ -298,6 +302,7 @@ export default async function OverheadExpensesPage({
                         Edit
                       </Link>
 
+                      {/* DELETE */}
                       <form
                         action={async () => {
                           "use server";
@@ -306,16 +311,9 @@ export default async function OverheadExpensesPage({
                           });
                         }}
                       >
-                        <button
-                          type="submit"
-                          className="text-red-600 hover:underline"
-                          onClick={(e) => {
-                            if (!confirm("Delete this record?"))
-                              e.preventDefault();
-                          }}
-                        >
+                        <ConfirmSubmitButton confirmText="Delete this record?">
                           Delete
-                        </button>
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </td>

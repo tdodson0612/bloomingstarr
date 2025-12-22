@@ -1,8 +1,12 @@
 // app/pricing/page.tsx
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { canEditData, canViewPricing } from "@/lib/roles";
+import { redirect } from "next/navigation";
 import type { Pricing, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -13,6 +17,18 @@ export default async function PricingPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Check permissions - Pricing page is restricted to Managers/Owners only
+  const session = await getSession();
+  const canView = session ? canViewPricing(session.role) : false;
+  
+  // Redirect employees away from pricing page
+  if (!canView) {
+    redirect("/home");
+  }
+
+  // Check edit permissions (Managers/Owners can edit)
+  const canEdit = session ? canEditData(session.role) : false;
+
   const params = await searchParams;
 
   // --- Read filters from URL ---
@@ -102,12 +118,15 @@ export default async function PricingPage({
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">Pricing</h1>
 
-        <Link
-          href="/pricing/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          + Add Price
-        </Link>
+        {/* Only show Add button if user can edit */}
+        {canEdit && (
+          <Link
+            href="/pricing/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            + Add Price
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -139,7 +158,7 @@ export default async function PricingPage({
               <th className="py-2 px-2">Final Price</th>
               <th className="py-2 px-2">Category</th>
               <th className="py-2 px-2">Notes</th>
-              <th className="py-2 px-2">Actions</th>
+              {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
 
@@ -162,38 +181,34 @@ export default async function PricingPage({
                 <td className="py-2 px-2">{r.category || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
-                {/* ACTIONS */}
-                <td className="py-2 px-2">
-                  <div className="flex gap-3">
-                    {/* EDIT */}
-                    <Link
-                      href={`/pricing/${r.id}/edit`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </Link>
+                {/* ACTIONS - Only show if user can edit */}
+                {canEdit && (
+                  <td className="py-2 px-2">
+                    <div className="flex gap-3">
+                      {/* EDIT */}
+                      <Link
+                        href={`/pricing/${r.id}/edit`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </Link>
 
-                    {/* DELETE */}
-                    <form
-                      action={async () => {
-                        "use server";
-                        await prisma.pricing.delete({
-                          where: { id: r.id },
-                        });
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="text-red-600 hover:underline"
-                        onClick={(e) => {
-                          if (!confirm("Delete this record?")) e.preventDefault();
+                      {/* DELETE */}
+                      <form
+                        action={async () => {
+                          "use server";
+                          await prisma.pricing.delete({
+                            where: { id: r.id },
+                          });
                         }}
                       >
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
+                        <ConfirmSubmitButton confirmText="Delete this record?">
+                          Delete
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

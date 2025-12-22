@@ -40,21 +40,77 @@ model Business {
   overheadExpenses OverheadExpenses[]
   sales          Sales[]
   pricings       Pricing[]
-
+  tableMetas     TableMetadata[]
+  brandColor     String? 
 }
 
 model User {
   id          String     @id @default(cuid())
   email       String     @unique
   name        String?
-  employeeId  String?    @unique  // ADD THIS
-  password    String?                // ADD THIS (will be hashed)
+  employeeId  String?    @unique
+  password    String?
   role        Role       @default(EMPLOYEE)
   businessId  String
   business    Business   @relation(fields: [businessId], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
+
+// ----------------------------
+// TABLE METADATA SYSTEM
+// ----------------------------
+
+model TableMetadata {
+  id          String           @id @default(cuid())
+  businessId  String
+  business    Business         @relation(fields: [businessId], references: [id])
+  
+  slug        String           // "plant-intake", "product-intake", etc.
+  displayName String           // "Plant Intake" (editable by managers)
+  icon        String?          // Optional icon name
+  order       Int              @default(0) // Display order in navigation
+  isVisible   Boolean          @default(true) // Show/hide table
+  
+  columns     ColumnMetadata[]
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@index([slug])
+}
+
+model ColumnMetadata {
+  id            String         @id @default(cuid())
+  tableId       String
+  table         TableMetadata  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  
+  fieldName     String         // "sku", "genus", etc. (database field name)
+  displayName   String         // "SKU", "Genus" (editable label)
+  dataType      String         // "text", "number", "date", "currency", etc.
+  order         Int            @default(0) // Column display order
+  isVisible     Boolean        @default(true) // Show/hide column
+  isRequired    Boolean        @default(false) // Required for forms
+  isFilterable  Boolean        @default(true) // Can be used in filters
+  isSortable    Boolean        @default(true) // Can be sorted
+  
+  // Future: formula support
+  isComputed    Boolean        @default(false) // Is this a computed column?
+  formula       String?        // Formula definition (JSON or string)
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  @@unique([tableId, fieldName])
+  @@index([tableId])
+  @@index([fieldName])
+}
+
+// ----------------------------
+// DATA TABLES
+// ----------------------------
 
 model PlantIntake {
   id            String     @id @default(cuid())

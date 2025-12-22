@@ -5,6 +5,7 @@ import { canEditData } from "@/lib/roles";
 import type { ProductIntake, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -22,7 +23,7 @@ export default async function ProductIntakePage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // --- Permissions ---
+  // Check permissions
   const session = await getSession();
   const canEdit = session ? canEditData(session.role) : false;
 
@@ -206,6 +207,7 @@ export default async function ProductIntakePage({
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">Product Intake</h1>
 
+        {/* Only show Add button if user can edit */}
         {canEdit && (
           <Link
             href="/product-intake/new"
@@ -277,6 +279,7 @@ export default async function ProductIntakePage({
                 <td className="py-2 px-2">{r.vendor || "-"}</td>
                 <td className="py-2 px-2">{r.notes || "-"}</td>
 
+                {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
                   <td className="py-2 px-2">
                     <div className="flex gap-3">
@@ -297,16 +300,9 @@ export default async function ProductIntakePage({
                           });
                         }}
                       >
-                        <button
-                          type="submit"
-                          className="text-red-600 hover:underline"
-                          onClick={(e) => {
-                            if (!confirm("Delete this record?"))
-                              e.preventDefault();
-                          }}
-                        >
+                        <ConfirmSubmitButton confirmText="Delete this record?">
                           Delete
-                        </button>
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </td>
