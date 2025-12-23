@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       role: user.role,
       name: user.name,
       employeeId: user.employeeId,
+      businessId: user.businessId,
     });
 
     return NextResponse.json({

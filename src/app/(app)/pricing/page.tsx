@@ -1,4 +1,4 @@
-// app/pricing/page.tsx
+// app/(app)/pricing/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData, canViewPricing } from "@/lib/roles";
@@ -7,6 +7,7 @@ import type { Pricing, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
+import { deletePricing } from "@/lib/actions/pricing";
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -22,7 +23,7 @@ export default async function PricingPage({
   const canView = session ? canViewPricing(session.role) : false;
   
   // Redirect employees away from pricing page
-  if (!canView) {
+  if (!canView || !session) {
     redirect("/home");
   }
 
@@ -41,7 +42,9 @@ export default async function PricingPage({
   const priceMax = (params.priceMax as string) || "";
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.PricingWhereInput = {};
+  const where: Prisma.PricingWhereInput = {
+    businessId: session.businessId,
+  };
 
   if (search) {
     where.OR = [
@@ -84,14 +87,17 @@ export default async function PricingPage({
         orderBy: { plantName: "asc" },
       }),
       prisma.pricing.findMany({
+        where: { businessId: session.businessId },
         select: { plantName: true },
         distinct: ["plantName"],
       }),
       prisma.pricing.findMany({
+        where: { businessId: session.businessId },
         select: { category: true },
         distinct: ["category"],
       }),
       prisma.pricing.findMany({
+        where: { businessId: session.businessId },
         select: { size: true },
         distinct: ["size"],
       }),
@@ -194,14 +200,7 @@ export default async function PricingPage({
                       </Link>
 
                       {/* DELETE */}
-                      <form
-                        action={async () => {
-                          "use server";
-                          await prisma.pricing.delete({
-                            where: { id: r.id },
-                          });
-                        }}
-                      >
+                      <form action={deletePricing.bind(null, r.id)}>
                         <ConfirmSubmitButton confirmText="Delete this record?">
                           Delete
                         </ConfirmSubmitButton>

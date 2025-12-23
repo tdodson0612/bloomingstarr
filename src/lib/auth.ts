@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcrypt";
 import { SignJWT, jwtVerify } from "jose";
 import { Role } from "@prisma/client";
+import { canEditData, canViewPricing } from "./roles";
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.AUTH_SECRET || "your-secret-key-change-in-production"
@@ -22,6 +23,7 @@ export type SessionData = {
   role: Role;
   name: string | null;
   employeeId: string | null;
+  businessId: string; // ADDED
 };
 
 // Hash a password
@@ -83,4 +85,52 @@ export async function requireAuth(): Promise<SessionData> {
 // Check if user has required role
 export function hasRole(session: SessionData, allowedRoles: Role[]): boolean {
   return allowedRoles.includes(session.role);
+}
+
+// ============================================
+// SERVER ACTION AUTHORIZATION HELPERS
+// ============================================
+
+/**
+ * Require edit permission (Manager/Owner only)
+ * Use in Server Actions that create/update/delete data
+ */
+export async function requireEditAccess(): Promise<SessionData> {
+  const session = await requireAuth();
+  
+  if (!canEditData(session.role)) {
+    throw new Error("Unauthorized: Edit access required");
+  }
+  
+  return session;
+}
+
+/**
+ * Require pricing access (Manager/Owner only)
+ * Use in pricing-related Server Actions
+ */
+export async function requirePricingAccess(): Promise<SessionData> {
+  const session = await requireAuth();
+  
+  if (!canViewPricing(session.role)) {
+    throw new Error("Unauthorized: Pricing access required");
+  }
+  
+  return session;
+}
+
+/**
+ * Ensure record belongs to user's business
+ * Use after fetching a record to validate ownership
+ */
+export async function requireBusinessAccess(
+  recordBusinessId: string
+): Promise<SessionData> {
+  const session = await requireAuth();
+  
+  if (session.businessId !== recordBusinessId) {
+    throw new Error("Forbidden: Access denied");
+  }
+  
+  return session;
 }

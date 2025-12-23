@@ -1,12 +1,14 @@
-// app/plant-intake/page.tsx
+// app/(app)/plant-intake/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
+import { redirect } from "next/navigation";
 import type { PlantIntake, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
 import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
+import { deletePlantIntake } from "@/lib/actions/plant-intake";
 
 type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -24,7 +26,9 @@ export default async function PlantIntakePage({
 }) {
   // Check permissions
   const session = await getSession();
-  const canEdit = session ? canEditData(session.role) : false;
+  if (!session) redirect("/login");
+  
+  const canEdit = canEditData(session.role);
 
   const params = await searchParams;
 
@@ -123,7 +127,9 @@ export default async function PlantIntakePage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.PlantIntakeWhereInput = {};
+  const where: Prisma.PlantIntakeWhereInput = {
+    businessId: session.businessId,
+  };
 
   if (search) {
     where.OR = [
@@ -180,18 +186,22 @@ export default async function PlantIntakePage({
         orderBy: { dateReceived: "desc" },
       }),
       prisma.plantIntake.findMany({
+        where: { businessId: session.businessId },
         select: { vendor: true },
         distinct: ["vendor"],
       }),
       prisma.plantIntake.findMany({
+        where: { businessId: session.businessId },
         select: { genus: true },
         distinct: ["genus"],
       }),
       prisma.plantIntake.findMany({
+        where: { businessId: session.businessId },
         select: { cultivar: true },
         distinct: ["cultivar"],
       }),
       prisma.plantIntake.findMany({
+        where: { businessId: session.businessId },
         select: { size: true },
         distinct: ["size"],
       }),
@@ -300,14 +310,7 @@ export default async function PlantIntakePage({
                       </Link>
 
                       {/* DELETE */}
-                      <form
-                        action={async () => {
-                          "use server";
-                          await prisma.plantIntake.delete({
-                            where: { id: r.id },
-                          });
-                        }}
-                      >
+                      <form action={deletePlantIntake.bind(null, r.id)}>
                         <ConfirmSubmitButton confirmText="Delete this record?">
                           Delete
                         </ConfirmSubmitButton>
