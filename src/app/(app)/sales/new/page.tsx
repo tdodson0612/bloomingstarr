@@ -5,29 +5,29 @@ import { DataForm } from "@/components/DataForm";
 import { validateAndPrepareData } from "@/lib/validation/helpers";
 
 // --- SERVER ACTION ---
-async function createFertilizerLog(formData: FormData) {
+async function createSale(formData: FormData) {
   "use server";
   const session = await requireAuth();
 
-  const data = validateAndPrepareData("fertilizer-log", formData, session.businessId);
+  const data = validateAndPrepareData("sales", formData, session.businessId);
 
   try {
-    await prisma.fertilizerLog.create({ data });
+    await prisma.sales.create({ data });
   } catch (error) {
     console.error("Database error:", error);
-    throw new Error("Failed to save fertilizer log record");
+    throw new Error("Failed to save sale record");
   }
 
-  redirect("/fertilizer-log");
+  redirect("/sales");
 }
 
-export default function NewFertilizerLogPage() {
+export default function NewSalePage() {
   return (
     <DataForm
-      slug="fertilizer-log"
+      slug="sales"
       mode="new"
-      onSubmit={createFertilizerLog}
-      cancelHref="/fertilizer-log"
+      onSubmit={createSale}
+      cancelHref="/sales"
     />
   );
 }

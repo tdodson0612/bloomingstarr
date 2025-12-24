@@ -1,181 +1,33 @@
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/auth";
+import { DataForm } from "@/components/DataForm";
+import { validateAndPrepareData } from "@/lib/validation/helpers";
 
 // --- SERVER ACTION ---
 async function createTreatmentTracking(formData: FormData) {
   "use server";
+  const session = await requireAuth();
 
-  await prisma.treatmentTracking.create({
-    data: {
-      businessId: "demo-business", // TODO: replace with real business context
-      treatmentDate: formData.get("treatmentDate")
-        ? new Date(formData.get("treatmentDate")!.toString())
-        : null,
-      plantName: formData.get("plantName")?.toString() || null,
-      genus: formData.get("genus")?.toString() || null,
-      cultivar: formData.get("cultivar")?.toString() || null,
-      treatmentType: formData.get("treatmentType")?.toString() || null,
-      product: formData.get("product")?.toString() || null,
-      dosage: formData.get("dosage")?.toString() || null,
-      quantity: Number(formData.get("quantity")) || null,
-      location: formData.get("location")?.toString() || null,
-      reason: formData.get("reason")?.toString() || null,
-      employee: formData.get("employee")?.toString() || null,
-      notes: formData.get("notes")?.toString() || null,
-    },
-  });
+  const data = validateAndPrepareData("treatment-tracking", formData, session.businessId);
+
+  try {
+    await prisma.treatmentTracking.create({ data });
+  } catch (error) {
+    console.error("Database error:", error);
+    throw new Error("Failed to save treatment tracking record");
+  }
 
   redirect("/treatment-tracking");
 }
 
 export default function NewTreatmentTrackingPage() {
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-6">Add Treatment</h1>
-
-      <form action={createTreatmentTracking} className="space-y-4">
-        {/* Date */}
-        <div>
-          <label className="block text-sm font-medium">Treatment Date</label>
-          <input
-            type="date"
-            name="treatmentDate"
-            className="border p-2 rounded w-full"
-            required
-          />
-        </div>
-
-        {/* Plant Name */}
-        <div>
-          <label className="block text-sm font-medium">Plant Name</label>
-          <input
-            type="text"
-            name="plantName"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Genus */}
-        <div>
-          <label className="block text-sm font-medium">Genus</label>
-          <input
-            type="text"
-            name="genus"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Cultivar */}
-        <div>
-          <label className="block text-sm font-medium">Cultivar</label>
-          <input
-            type="text"
-            name="cultivar"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Treatment Type */}
-        <div>
-          <label className="block text-sm font-medium">Treatment Type</label>
-          <input
-            type="text"
-            name="treatmentType"
-            placeholder="e.g., Pesticide, Fungicide, Herbicide"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Product */}
-        <div>
-          <label className="block text-sm font-medium">Product</label>
-          <input
-            type="text"
-            name="product"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Dosage */}
-        <div>
-          <label className="block text-sm font-medium">Dosage</label>
-          <input
-            type="text"
-            name="dosage"
-            placeholder="e.g., 2 oz per gallon"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Quantity */}
-        <div>
-          <label className="block text-sm font-medium">Quantity Treated</label>
-          <input
-            type="number"
-            name="quantity"
-            className="border p-2 rounded w-full"
-            min="0"
-          />
-        </div>
-
-        {/* Location */}
-        <div>
-          <label className="block text-sm font-medium">Location</label>
-          <input
-            type="text"
-            name="location"
-            placeholder="e.g., Greenhouse A, Bench 3"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Reason */}
-        <div>
-          <label className="block text-sm font-medium">Reason</label>
-          <input
-            type="text"
-            name="reason"
-            placeholder="e.g., Aphid infestation, Powdery mildew"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Employee */}
-        <div>
-          <label className="block text-sm font-medium">Employee</label>
-          <input
-            type="text"
-            name="employee"
-            className="border p-2 rounded w-full"
-          />
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium">Notes</label>
-          <textarea
-            name="notes"
-            className="border p-2 rounded w-full"
-            rows={3}
-          ></textarea>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Save
-          </button>
-          <a
-            href="/treatment-tracking"
-            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-          >
-            Cancel
-          </a>
-        </div>
-      </form>
-    </div>
+    <DataForm
+      slug="treatment-tracking"
+      mode="new"
+      onSubmit={createTreatmentTracking}
+      cancelHref="/treatment-tracking"
+    />
   );
 }
