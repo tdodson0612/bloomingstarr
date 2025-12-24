@@ -1,10 +1,12 @@
-// app/treatment-tracking/page.tsx
+// app/(app)/treatment-tracking/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
+import { redirect } from "next/navigation";
 import type { TreatmentTracking, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type SearchParams = {
@@ -25,9 +27,15 @@ export default async function TreatmentTrackingPage({
 }) {
   // Check permissions
   const session = await getSession();
-  const canEdit = session ? canEditData(session.role) : false;
+  if (!session) redirect("/login");
+  
+  const canEdit = canEditData(session.role);
 
   const params = await searchParams;
+
+  // 🆕 METADATA - Get table and column definitions
+  const table = getTableBySlug("treatment-tracking");
+  const columns = table ? getColumnsForTable(table.id) : [];
 
   // --- Read filters from URL ---
   const search = (params.search as string) || "";
@@ -120,7 +128,9 @@ export default async function TreatmentTrackingPage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.TreatmentTrackingWhereInput = {};
+  const where: Prisma.TreatmentTrackingWhereInput = {
+    businessId: session.businessId,
+  };
 
   if (search) {
     where.OR = [
@@ -186,18 +196,22 @@ export default async function TreatmentTrackingPage({
       orderBy: { treatmentDate: "desc" },
     }),
     prisma.treatmentTracking.findMany({
+      where: { businessId: session.businessId },
       select: { employee: true },
       distinct: ["employee"],
     }),
     prisma.treatmentTracking.findMany({
+      where: { businessId: session.businessId },
       select: { treatmentType: true },
       distinct: ["treatmentType"],
     }),
     prisma.treatmentTracking.findMany({
+      where: { businessId: session.businessId },
       select: { plantName: true },
       distinct: ["plantName"],
     }),
     prisma.treatmentTracking.findMany({
+      where: { businessId: session.businessId },
       select: { location: true },
       distinct: ["location"],
     }),
@@ -227,7 +241,9 @@ export default async function TreatmentTrackingPage({
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Treatment Tracking</h1>
+        <h1 className="text-2xl font-semibold">
+          {table?.name || "Treatment Tracking"}
+        </h1>
 
         {/* Only show Add button if user can edit */}
         {canEdit && (
@@ -260,23 +276,17 @@ export default async function TreatmentTrackingPage({
         />
       </div>
 
-      {/* Table */}
+      {/* 🆕 METADATA-DRIVEN TABLE */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
         <table className="w-full text-left text-sm min-w-[1400px]">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">Plant Name</th>
-              <th className="py-2 px-2">Genus</th>
-              <th className="py-2 px-2">Cultivar</th>
-              <th className="py-2 px-2">Treatment Type</th>
-              <th className="py-2 px-2">Product</th>
-              <th className="py-2 px-2">Dosage</th>
-              <th className="py-2 px-2">Qty</th>
-              <th className="py-2 px-2">Location</th>
-              <th className="py-2 px-2">Reason</th>
-              <th className="py-2 px-2">Employee</th>
-              <th className="py-2 px-2">Notes</th>
+              {/* Dynamically render headers from metadata */}
+              {columns.map((col) => (
+                <th key={col.id} className="py-2 px-2">
+                  {col.name}
+                </th>
+              ))}
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
@@ -284,22 +294,15 @@ export default async function TreatmentTrackingPage({
           <tbody>
             {records.map((r: TreatmentTracking) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">
-                  {r.treatmentDate
-                    ? r.treatmentDate.toISOString().slice(0, 10)
-                    : "-"}
-                </td>
-                <td className="py-2 px-2">{r.plantName || "-"}</td>
-                <td className="py-2 px-2">{r.genus || "-"}</td>
-                <td className="py-2 px-2">{r.cultivar || "-"}</td>
-                <td className="py-2 px-2">{r.treatmentType || "-"}</td>
-                <td className="py-2 px-2">{r.product || "-"}</td>
-                <td className="py-2 px-2">{r.dosage || "-"}</td>
-                <td className="py-2 px-2">{r.quantity ?? "-"}</td>
-                <td className="py-2 px-2">{r.location || "-"}</td>
-                <td className="py-2 px-2">{r.reason || "-"}</td>
-                <td className="py-2 px-2">{r.employee || "-"}</td>
-                <td className="py-2 px-2">{r.notes || "-"}</td>
+                {/* Dynamically render cells from metadata */}
+                {columns.map((col) => {
+                  const value = (r as any)[col.id];
+                  return (
+                    <td key={col.id} className="py-2 px-2">
+                      {formatCellValue(value, col.type)}
+                    </td>
+                  );
+                })}
 
                 {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
@@ -342,4 +345,32 @@ export default async function TreatmentTrackingPage({
       </div>
     </div>
   );
+}
+
+// 🆕 HELPER - Format cell values based on column type
+function formatCellValue(value: any, type: string): string {
+  if (value === null || value === undefined) return "-";
+
+  switch (type) {
+    case "date":
+      if (value instanceof Date) {
+        return value.toISOString().slice(0, 10);
+      }
+      return value;
+
+    case "currency":
+      const num = Number(value);
+      return isNaN(num) ? value : `$${num.toFixed(2)}`;
+
+    case "percent":
+      const pct = Number(value);
+      return isNaN(pct) ? value : `${pct}%`;
+
+    case "number":
+      return String(value ?? "-");
+
+    case "text":
+    default:
+      return String(value || "-");
+  }
 }

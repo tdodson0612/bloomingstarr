@@ -1,10 +1,12 @@
-// app/transplant-log/page.tsx
+// app/(app)/transplant-log/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
+import { redirect } from "next/navigation";
 import type { TransplantLog, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type SearchParams = {
@@ -25,9 +27,15 @@ export default async function TransplantLogPage({
 }) {
   // Check permissions
   const session = await getSession();
-  const canEdit = session ? canEditData(session.role) : false;
+  if (!session) redirect("/login");
+  
+  const canEdit = canEditData(session.role);
 
   const params = await searchParams;
+
+  // 🆕 METADATA - Get table and column definitions
+  const table = getTableBySlug("transplant-log");
+  const columns = table ? getColumnsForTable(table.id) : [];
 
   // --- Read filters from URL ---
   const search = (params.search as string) || "";
@@ -120,7 +128,9 @@ export default async function TransplantLogPage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.TransplantLogWhereInput = {};
+  const where: Prisma.TransplantLogWhereInput = {
+    businessId: session.businessId,
+  };
 
   if (search) {
     where.OR = [
@@ -179,18 +189,22 @@ export default async function TransplantLogPage({
         orderBy: { transplantDate: "desc" },
       }),
       prisma.transplantLog.findMany({
+        where: { businessId: session.businessId },
         select: { employee: true },
         distinct: ["employee"],
       }),
       prisma.transplantLog.findMany({
+        where: { businessId: session.businessId },
         select: { plantName: true },
         distinct: ["plantName"],
       }),
       prisma.transplantLog.findMany({
+        where: { businessId: session.businessId },
         select: { genus: true },
         distinct: ["genus"],
       }),
       prisma.transplantLog.findMany({
+        where: { businessId: session.businessId },
         select: { location: true },
         distinct: ["location"],
       }),
@@ -220,7 +234,9 @@ export default async function TransplantLogPage({
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Transplant Log</h1>
+        <h1 className="text-2xl font-semibold">
+          {table?.name || "Transplant Log"}
+        </h1>
 
         {/* Only show Add button if user can edit */}
         {canEdit && (
@@ -253,21 +269,17 @@ export default async function TransplantLogPage({
         />
       </div>
 
-      {/* Table */}
+      {/* 🆕 METADATA-DRIVEN TABLE */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
         <table className="w-full text-left text-sm min-w-[1200px]">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">Plant Name</th>
-              <th className="py-2 px-2">Genus</th>
-              <th className="py-2 px-2">Cultivar</th>
-              <th className="py-2 px-2">From Size</th>
-              <th className="py-2 px-2">To Size</th>
-              <th className="py-2 px-2">Qty</th>
-              <th className="py-2 px-2">Location</th>
-              <th className="py-2 px-2">Employee</th>
-              <th className="py-2 px-2">Notes</th>
+              {/* Dynamically render headers from metadata */}
+              {columns.map((col) => (
+                <th key={col.id} className="py-2 px-2">
+                  {col.name}
+                </th>
+              ))}
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
@@ -275,20 +287,15 @@ export default async function TransplantLogPage({
           <tbody>
             {records.map((r: TransplantLog) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">
-                  {r.transplantDate
-                    ? r.transplantDate.toISOString().slice(0, 10)
-                    : "-"}
-                </td>
-                <td className="py-2 px-2">{r.plantName || "-"}</td>
-                <td className="py-2 px-2">{r.genus || "-"}</td>
-                <td className="py-2 px-2">{r.cultivar || "-"}</td>
-                <td className="py-2 px-2">{r.fromSize || "-"}</td>
-                <td className="py-2 px-2">{r.toSize || "-"}</td>
-                <td className="py-2 px-2">{r.quantity ?? "-"}</td>
-                <td className="py-2 px-2">{r.location || "-"}</td>
-                <td className="py-2 px-2">{r.employee || "-"}</td>
-                <td className="py-2 px-2">{r.notes || "-"}</td>
+                {/* Dynamically render cells from metadata */}
+                {columns.map((col) => {
+                  const value = (r as any)[col.id];
+                  return (
+                    <td key={col.id} className="py-2 px-2">
+                      {formatCellValue(value, col.type)}
+                    </td>
+                  );
+                })}
 
                 {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
@@ -331,4 +338,32 @@ export default async function TransplantLogPage({
       </div>
     </div>
   );
+}
+
+// 🆕 HELPER - Format cell values based on column type
+function formatCellValue(value: any, type: string): string {
+  if (value === null || value === undefined) return "-";
+
+  switch (type) {
+    case "date":
+      if (value instanceof Date) {
+        return value.toISOString().slice(0, 10);
+      }
+      return value;
+
+    case "currency":
+      const num = Number(value);
+      return isNaN(num) ? value : `$${num.toFixed(2)}`;
+
+    case "percent":
+      const pct = Number(value);
+      return isNaN(pct) ? value : `${pct}%`;
+
+    case "number":
+      return String(value ?? "-");
+
+    case "text":
+    default:
+      return String(value || "-");
+  }
 }

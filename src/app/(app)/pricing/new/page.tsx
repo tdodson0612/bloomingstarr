@@ -1,3 +1,4 @@
+//src/app/(app)/pricing/new/page.tsx
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 

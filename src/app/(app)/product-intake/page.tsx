@@ -1,10 +1,12 @@
-// app/product-intake/page.tsx
+// app/(app)/product-intake/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
+import { redirect } from "next/navigation";
 import type { ProductIntake, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type SearchParams = {
@@ -25,9 +27,15 @@ export default async function ProductIntakePage({
 }) {
   // Check permissions
   const session = await getSession();
-  const canEdit = session ? canEditData(session.role) : false;
+  if (!session) redirect("/login");
+  
+  const canEdit = canEditData(session.role);
 
   const params = await searchParams;
+
+  // 🆕 METADATA - Get table and column definitions
+  const table = getTableBySlug("product-intake");
+  const columns = table ? getColumnsForTable(table.id) : [];
 
   // --- Read filters from URL ---
   const search = (params.search as string) || "";
@@ -119,7 +127,9 @@ export default async function ProductIntakePage({
   }
 
   // --- Prisma WHERE conditions ---
-  const where: Prisma.ProductIntakeWhereInput = {};
+  const where: Prisma.ProductIntakeWhereInput = {
+    businessId: session.businessId,
+  };
 
   if (search) {
     where.OR = [
@@ -173,14 +183,17 @@ export default async function ProductIntakePage({
         orderBy: { dateReceived: "desc" },
       }),
       prisma.productIntake.findMany({
+        where: { businessId: session.businessId },
         select: { vendor: true },
         distinct: ["vendor"],
       }),
       prisma.productIntake.findMany({
+        where: { businessId: session.businessId },
         select: { category: true },
         distinct: ["category"],
       }),
       prisma.productIntake.findMany({
+        where: { businessId: session.businessId },
         select: { brand: true },
         distinct: ["brand"],
       }),
@@ -205,7 +218,9 @@ export default async function ProductIntakePage({
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Product Intake</h1>
+        <h1 className="text-2xl font-semibold">
+          {table?.name || "Product Intake"}
+        </h1>
 
         {/* Only show Add button if user can edit */}
         {canEdit && (
@@ -236,22 +251,17 @@ export default async function ProductIntakePage({
         />
       </div>
 
-      {/* Table */}
+      {/* 🆕 METADATA-DRIVEN TABLE */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
         <table className="w-full text-left text-sm min-w-[1200px]">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">Product Name</th>
-              <th className="py-2 px-2">Category</th>
-              <th className="py-2 px-2">Brand</th>
-              <th className="py-2 px-2">SKU</th>
-              <th className="py-2 px-2">Qty</th>
-              <th className="py-2 px-2">Unit</th>
-              <th className="py-2 px-2">Unit Cost</th>
-              <th className="py-2 px-2">Total Cost</th>
-              <th className="py-2 px-2">Vendor</th>
-              <th className="py-2 px-2">Notes</th>
+              {/* Dynamically render headers from metadata */}
+              {columns.map((col) => (
+                <th key={col.id} className="py-2 px-2">
+                  {col.name}
+                </th>
+              ))}
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
@@ -259,25 +269,15 @@ export default async function ProductIntakePage({
           <tbody>
             {records.map((r: ProductIntake) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">
-                  {r.dateReceived
-                    ? r.dateReceived.toISOString().slice(0, 10)
-                    : "-"}
-                </td>
-                <td className="py-2 px-2">{r.productName || "-"}</td>
-                <td className="py-2 px-2">{r.category || "-"}</td>
-                <td className="py-2 px-2">{r.brand || "-"}</td>
-                <td className="py-2 px-2">{r.sku || "-"}</td>
-                <td className="py-2 px-2">{r.quantity ?? "-"}</td>
-                <td className="py-2 px-2">{r.unit || "-"}</td>
-                <td className="py-2 px-2">
-                  {r.unitCost ? `$${r.unitCost.toFixed(2)}` : "-"}
-                </td>
-                <td className="py-2 px-2">
-                  {r.totalCost ? `$${r.totalCost.toFixed(2)}` : "-"}
-                </td>
-                <td className="py-2 px-2">{r.vendor || "-"}</td>
-                <td className="py-2 px-2">{r.notes || "-"}</td>
+                {/* Dynamically render cells from metadata */}
+                {columns.map((col) => {
+                  const value = (r as any)[col.id];
+                  return (
+                    <td key={col.id} className="py-2 px-2">
+                      {formatCellValue(value, col.type)}
+                    </td>
+                  );
+                })}
 
                 {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
@@ -320,4 +320,32 @@ export default async function ProductIntakePage({
       </div>
     </div>
   );
+}
+
+// 🆕 HELPER - Format cell values based on column type
+function formatCellValue(value: any, type: string): string {
+  if (value === null || value === undefined) return "-";
+
+  switch (type) {
+    case "date":
+      if (value instanceof Date) {
+        return value.toISOString().slice(0, 10);
+      }
+      return value;
+
+    case "currency":
+      const num = Number(value);
+      return isNaN(num) ? value : `$${num.toFixed(2)}`;
+
+    case "percent":
+      const pct = Number(value);
+      return isNaN(pct) ? value : `${pct}%`;
+
+    case "number":
+      return String(value ?? "-");
+
+    case "text":
+    default:
+      return String(value || "-");
+  }
 }

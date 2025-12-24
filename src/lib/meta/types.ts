@@ -5,8 +5,8 @@
  * Example: "Plant Intake", "Sales", "Schedule"
  */
 export interface AppTable {
-  id: string;               // unique ID
-  name: string;             // display name (editable by managers)
+  id: string;               // unique ID (stable, not editable)
+  name: string;             // display name (manager-editable)
   slug: string;             // used in URLs (plant-intake, sales)
   createdBy: string;        // user ID
   createdAt: Date;
@@ -14,22 +14,7 @@ export interface AppTable {
 }
 
 /**
- * Represents a column inside a table
- * Example: SKU, Quantity, Date Received
- */
-export interface AppColumn {
-  id: string;
-  tableId: string;          // which table this column belongs to
-  name: string;             // column name (editable)
-  type: ColumnType;         // data type
-  isComputed: boolean;      // does this column use a formula?
-  formula?: string;         // stored formula (if computed)
-  orderIndex: number;       // column order
-  isVisible: boolean;       // hide/show column
-}
-
-/**
- * Allowed column types (simple on purpose)
+ * Allowed column types (intentionally simple)
  */
 export type ColumnType =
   | "text"
@@ -39,7 +24,65 @@ export type ColumnType =
   | "percent";
 
 /**
+ * Represents a column inside a table
+ * Example: SKU, Quantity, Date Received
+ */
+export interface AppColumn {
+  /** Stable identifier (never changes, used in DB + forms) */
+  id: string;
+
+  /** Which table this column belongs to */
+  tableId: string;
+
+  /** Display name (manager-editable) */
+  name: string;
+
+  /** Data type */
+  type: ColumnType;
+
+  /** Does this column use a formula? */
+  isComputed: boolean;
+
+  /** Stored formula (if computed) */
+  formula?: string;
+
+  /** Column order (manager-controlled) */
+  orderIndex: number;
+
+  /** Hide/show column in tables */
+  isVisible: boolean;
+
+  // ─────────────────────────────────────────────
+  // 🔥 FORM METADATA (NEW – REQUIRED FOR DynamicForm)
+  // ─────────────────────────────────────────────
+
+  /**
+   * Can users edit this field?
+   * Defaults to true.
+   * Set false for IDs, system fields, computed values.
+   */
+  isEditable?: boolean;
+
+  /**
+   * Is a value required on create/edit?
+   * Defaults to false.
+   */
+  isRequired?: boolean;
+
+  /**
+   * Placeholder text shown in inputs
+   */
+  placeholder?: string;
+
+  /**
+   * Default value used in create mode
+   */
+  defaultValue?: string;
+}
+
+/**
  * Represents a single row in a table
+ * (row-level metadata only)
  */
 export interface AppRow {
   id: string;
@@ -50,11 +93,11 @@ export interface AppRow {
 
 /**
  * Represents a single cell value
- * (this is why columns can be renamed safely)
+ * (column rename-safe, metadata-driven)
  */
 export interface AppCell {
   id: string;
   rowId: string;
   columnId: string;
-  value: string | null;     // everything stored as string for now
+  value: string | null;     // stored as string for now (intentional)
 }

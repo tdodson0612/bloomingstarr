@@ -1,4 +1,4 @@
-// app/(app)/plant-intake/page.tsx
+// src/app/(app)/plant-intake/page.tsx
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { canEditData } from "@/lib/roles";
@@ -32,7 +32,7 @@ export default async function PlantIntakePage({
 
   const params = await searchParams;
 
-  // temp placement //
+  // 🆕 METADATA - Get table and column definitions
   const table = getTableBySlug("plant-intake");
   const columns = table ? getColumnsForTable(table.id) : [];
 
@@ -231,7 +231,9 @@ export default async function PlantIntakePage({
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Plant Intake</h1>
+        <h1 className="text-2xl font-semibold">
+          {table?.name || "Plant Intake"}
+        </h1>
 
         {/* Only show Add button if user can edit */}
         {canEdit && (
@@ -264,19 +266,17 @@ export default async function PlantIntakePage({
         />
       </div>
 
-      {/* Table */}
+      {/* 🆕 METADATA-DRIVEN TABLE */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
         <table className="w-full text-left text-sm min-w-[1100px]">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">SKU</th>
-              <th className="py-2 px-2">Genus</th>
-              <th className="py-2 px-2">Cultivar</th>
-              <th className="py-2 px-2">Size</th>
-              <th className="py-2 px-2">Qty</th>
-              <th className="py-2 px-2">Vendor</th>
-              <th className="py-2 px-2">Notes</th>
+              {/* Dynamically render headers from metadata */}
+              {columns.map((col) => (
+                <th key={col.id} className="py-2 px-2">
+                  {col.name}
+                </th>
+              ))}
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
@@ -284,18 +284,15 @@ export default async function PlantIntakePage({
           <tbody>
             {records.map((r: PlantIntake) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">
-                  {r.dateReceived
-                    ? r.dateReceived.toISOString().slice(0, 10)
-                    : "-"}
-                </td>
-                <td className="py-2 px-2">{r.sku || "-"}</td>
-                <td className="py-2 px-2">{r.genus || "-"}</td>
-                <td className="py-2 px-2">{r.cultivar || "-"}</td>
-                <td className="py-2 px-2">{r.size || "-"}</td>
-                <td className="py-2 px-2">{r.quantity ?? "-"}</td>
-                <td className="py-2 px-2">{r.vendor || "-"}</td>
-                <td className="py-2 px-2">{r.notes || "-"}</td>
+                {/* Dynamically render cells from metadata */}
+                {columns.map((col) => {
+                  const value = (r as any)[col.id];
+                  return (
+                    <td key={col.id} className="py-2 px-2">
+                      {formatCellValue(value, col.type)}
+                    </td>
+                  );
+                })}
 
                 {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
@@ -331,4 +328,32 @@ export default async function PlantIntakePage({
       </div>
     </div>
   );
+}
+
+// 🆕 HELPER - Format cell values based on column type
+function formatCellValue(value: any, type: string): string {
+  if (value === null || value === undefined) return "-";
+
+  switch (type) {
+    case "date":
+      if (value instanceof Date) {
+        return value.toISOString().slice(0, 10);
+      }
+      return value;
+
+    case "currency":
+      const num = Number(value);
+      return isNaN(num) ? value : `$${num.toFixed(2)}`;
+
+    case "percent":
+      const pct = Number(value);
+      return isNaN(pct) ? value : `${pct}%`;
+
+    case "number":
+      return String(value ?? "-");
+
+    case "text":
+    default:
+      return String(value || "-");
+  }
 }

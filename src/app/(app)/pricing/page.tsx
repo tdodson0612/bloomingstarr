@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import type { Pricing, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FilterBar from "./FilterBar";
+import { getTableBySlug, getColumnsForTable } from "@/lib/meta/getTableMeta";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
 import { deletePricing } from "@/lib/actions/pricing";
 
@@ -28,9 +29,13 @@ export default async function PricingPage({
   }
 
   // Check edit permissions (Managers/Owners can edit)
-  const canEdit = session ? canEditData(session.role) : false;
+  const canEdit = canEditData(session.role);
 
   const params = await searchParams;
+
+  // 🆕 METADATA - Get table and column definitions
+  const table = getTableBySlug("pricing");
+  const columns = table ? getColumnsForTable(table.id) : [];
 
   // --- Read filters from URL ---
   const search = (params.search as string) || "";
@@ -122,7 +127,9 @@ export default async function PricingPage({
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Pricing</h1>
+        <h1 className="text-2xl font-semibold">
+          {table?.name || "Pricing"}
+        </h1>
 
         {/* Only show Add button if user can edit */}
         {canEdit && (
@@ -150,20 +157,17 @@ export default async function PricingPage({
         />
       </div>
 
-      {/* Table */}
+      {/* 🆕 METADATA-DRIVEN TABLE */}
       <div className="bg-white shadow p-4 rounded border overflow-x-auto">
         <table className="w-full text-left text-sm min-w-[1000px]">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="py-2 px-2">Plant Name</th>
-              <th className="py-2 px-2">Genus</th>
-              <th className="py-2 px-2">Cultivar</th>
-              <th className="py-2 px-2">Size</th>
-              <th className="py-2 px-2">Base Price</th>
-              <th className="py-2 px-2">Markup (%)</th>
-              <th className="py-2 px-2">Final Price</th>
-              <th className="py-2 px-2">Category</th>
-              <th className="py-2 px-2">Notes</th>
+              {/* Dynamically render headers from metadata */}
+              {columns.map((col) => (
+                <th key={col.id} className="py-2 px-2">
+                  {col.name}
+                </th>
+              ))}
               {canEdit && <th className="py-2 px-2">Actions</th>}
             </tr>
           </thead>
@@ -171,21 +175,20 @@ export default async function PricingPage({
           <tbody>
             {records.map((r: Pricing) => (
               <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">{r.plantName || "-"}</td>
-                <td className="py-2 px-2">{r.genus || "-"}</td>
-                <td className="py-2 px-2">{r.cultivar || "-"}</td>
-                <td className="py-2 px-2">{r.size || "-"}</td>
-                <td className="py-2 px-2">
-                  {r.basePrice ? `$${r.basePrice.toFixed(2)}` : "-"}
-                </td>
-                <td className="py-2 px-2">
-                  {r.markup ? `${r.markup}%` : "-"}
-                </td>
-                <td className="py-2 px-2 font-semibold text-green-600">
-                  {r.finalPrice ? `$${r.finalPrice.toFixed(2)}` : "-"}
-                </td>
-                <td className="py-2 px-2">{r.category || "-"}</td>
-                <td className="py-2 px-2">{r.notes || "-"}</td>
+                {/* Dynamically render cells from metadata */}
+                {columns.map((col) => {
+                  const value = (r as any)[col.id];
+                  // Special styling for finalPrice column
+                  const isFinalPrice = col.id === "finalPrice";
+                  return (
+                    <td 
+                      key={col.id} 
+                      className={`py-2 px-2 ${isFinalPrice ? "font-semibold text-green-600" : ""}`}
+                    >
+                      {formatCellValue(value, col.type)}
+                    </td>
+                  );
+                })}
 
                 {/* ACTIONS - Only show if user can edit */}
                 {canEdit && (
@@ -221,4 +224,32 @@ export default async function PricingPage({
       </div>
     </div>
   );
+}
+
+// 🆕 HELPER - Format cell values based on column type
+function formatCellValue(value: any, type: string): string {
+  if (value === null || value === undefined) return "-";
+
+  switch (type) {
+    case "date":
+      if (value instanceof Date) {
+        return value.toISOString().slice(0, 10);
+      }
+      return value;
+
+    case "currency":
+      const num = Number(value);
+      return isNaN(num) ? value : `$${num.toFixed(2)}`;
+
+    case "percent":
+      const pct = Number(value);
+      return isNaN(pct) ? value : `${pct}%`;
+
+    case "number":
+      return String(value ?? "-");
+
+    case "text":
+    default:
+      return String(value || "-");
+  }
 }
